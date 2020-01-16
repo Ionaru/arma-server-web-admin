@@ -39,6 +39,22 @@
     </div>
   </div>
 
+<% if (process) { %>
+  <div class="form-group">
+    <label class="col-sm-1 control-label">CPU</label>
+    <div class="col-sm-11">
+      <p class="form-control-static"><%= process.cpuFormatted %></p>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label class="col-sm-1 control-label">RAM</label>
+    <div class="col-sm-11">
+      <p class="form-control-static"><%= process.memoryFormatted %></p>
+    </div>
+  </div>
+<% } %>
+
 <% if (state) { %>
   <div class="form-group">
     <label class="col-sm-1 control-label">Name</label>
