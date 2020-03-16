@@ -52,9 +52,7 @@
             <select class="form-control forcedDifficulty" value="<%- (forcedDifficulty || '') %>">
                 <%= ["", "Recruit", "Regular", "Veteran", "Custom"].map(function (difficulty) {
                 var selected = difficulty == forcedDifficulty ? 'selected' : '';
-                return '
-                <option value="' + difficulty + '"
-                ' + selected + '>' + (difficulty || 'Not set') + '</option>';
+                return '<option value="' + difficulty + '"' + selected + '>' + (difficulty || 'Not set') + '</option>';
                 }).join('\n') %>
             </select>
             <p class="help-block">Difficulty that is always used unless mission rotation states otherwise</p>
