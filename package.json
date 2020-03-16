@@ -7,7 +7,7 @@
   "scripts": {
     "install-windows-service": "winser -i -a -c",
     "uninstall-windows-service": "winser -r -x -c",
-    "lint": "standard --verbose",
+    "lint": "eslint */**/*.js webpack.config.js config.js.example",
     "start": "node app.js",
     "test": "node node_modules/mocha/bin/mocha --recursive"
   },
@@ -52,9 +52,9 @@
     "winser": "^1.0.2"
   },
   "devDependencies": {
+    "eslint": "^6.8.0",
     "mocha": "~3.2.0",
     "should": "~13.0.1",
-    "standard": "^14.3.1",
     "supertest": "^2.0.1",
     "timekeeper": "0.0.5"
   }
