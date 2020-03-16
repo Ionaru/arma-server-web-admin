@@ -1,75 +1,75 @@
 <form class="form-horizontal" role="form">
-  <div class="form-group">
-    <label class="col-sm-1 control-label">Status</label>
-    <div class="col-sm-11">
-      <p class="form-control-static">
-        <% if (typeof(pid) != "undefined" && pid) { %>
-          <% if (state) { %>
-            <span class="label label-success">Online</span>
-          <% } else { %>
-            <span class="label label-info">Launching</span>
-          <% } %>
+    <div class="form-group">
+        <label class="col-sm-1 control-label">Status</label>
+        <div class="col-sm-11">
+            <p class="form-control-static">
+                <% if (typeof(pid) != "undefined" && pid) { %>
+                <% if (state) { %>
+                <span class="label label-success">Online</span>
+                <% } else { %>
+                <span class="label label-info">Launching</span>
+                <% } %>
 
-          <a class="btn btn-primary btn-xs" href="#" id="stop">
-            <span class="glyphicon glyphicon-stop"></span>
-            Stop
-          </a>
-        <% } else { %>
-          <span class="label label-default">Offline</span>
-          <a class="btn btn-primary btn-xs" href="#" id="start">
-            <span class="glyphicon glyphicon-play"></span>
-            Start
-          </a>
-        <% } %>
-      </p>
+                <a class="btn btn-primary btn-xs" href="#" id="stop">
+                    <span class="glyphicon glyphicon-stop"></span>
+                    Stop
+                </a>
+                <% } else { %>
+                <span class="label label-default">Offline</span>
+                <a class="btn btn-primary btn-xs" href="#" id="start">
+                    <span class="glyphicon glyphicon-play"></span>
+                    Start
+                </a>
+                <% } %>
+            </p>
+        </div>
     </div>
-  </div>
 
-  <div class="form-group">
-    <label class="col-sm-1 control-label">Port</label>
-    <div class="col-sm-11">
-      <p class="form-control-static"><%- port %></p>
+    <div class="form-group">
+        <label class="col-sm-1 control-label">Port</label>
+        <div class="col-sm-11">
+            <p class="form-control-static"><%- port %></p>
+        </div>
     </div>
-  </div>
 
-  <div class="form-group">
-    <label class="col-sm-1 control-label">Mods</label>
-    <div class="col-sm-11">
-      <p class="form-control-static"><%- mods.join(', ') %></p>
+    <div class="form-group">
+        <label class="col-sm-1 control-label">Mods</label>
+        <div class="col-sm-11">
+            <p class="form-control-static"><%- mods.join(', ') %></p>
+        </div>
     </div>
-  </div>
 
-<% if (state) { %>
-  <div class="form-group">
-    <label class="col-sm-1 control-label">Name</label>
-    <div class="col-sm-11">
-      <p class="form-control-static"><%= state.name %></p>
+    <% if (state) { %>
+    <div class="form-group">
+        <label class="col-sm-1 control-label">Name</label>
+        <div class="col-sm-11">
+            <p class="form-control-static"><%= state.name %></p>
+        </div>
     </div>
-  </div>
 
-  <div class="form-group">
-    <label class="col-sm-1 control-label">Map</label>
-    <div class="col-sm-11">
-      <p class="form-control-static"><%= state.map %></p>
+    <div class="form-group">
+        <label class="col-sm-1 control-label">Map</label>
+        <div class="col-sm-11">
+            <p class="form-control-static"><%= state.map %></p>
+        </div>
     </div>
-  </div>
 
-  <div class="form-group">
-    <label class="col-sm-1 control-label">Mission</label>
-    <div class="col-sm-11">
-      <p class="form-control-static"><%= state.raw.game %></p>
+    <div class="form-group">
+        <label class="col-sm-1 control-label">Mission</label>
+        <div class="col-sm-11">
+            <p class="form-control-static"><%= state.raw.game %></p>
+        </div>
     </div>
-  </div>
 
-  <div class="form-group">
-    <label class="col-sm-1 control-label">Players</label>
-    <div class="col-sm-11">
-      <p class="form-control-static">
-        <%= state.players.length %> / <%= state.maxplayers %>
-      </p>
+    <div class="form-group">
+        <label class="col-sm-1 control-label">Players</label>
+        <div class="col-sm-11">
+            <p class="form-control-static">
+                <%= state.players.length %> / <%= state.maxplayers %>
+            </p>
+        </div>
     </div>
-  </div>
 
-<% } %>
+    <% } %>
 
 </form>

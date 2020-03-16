@@ -1,13 +1,13 @@
-var _ = require('underscore')
-var Marionette = require('marionette')
+var _ = require('underscore');
+var Marionette = require('marionette');
 
-var tpl = require('tpl/layout.html')
+var tpl = require('tpl/layout.html');
 
 module.exports = Marionette.LayoutView.extend({
-  template: _.template(tpl),
+    template: _.template(tpl),
 
-  regions: {
-    navigation: '#navigation',
-    content: '#content'
-  }
-})
+    regions: {
+        navigation: '#navigation',
+        content: '#content'
+    }
+});

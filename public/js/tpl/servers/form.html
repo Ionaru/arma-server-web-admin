@@ -1,147 +1,158 @@
 <form class="form-horizontal" role="form">
-  <div class="form-group">
-    <label for="title" class="col-sm-2 control-label">Title</label>
-    <div class="col-sm-10">
-      <input type="text" class="form-control title" placeholder="Title" value="<%- title %>">
+    <div class="form-group">
+        <label for="title" class="col-sm-2 control-label">Title</label>
+        <div class="col-sm-10">
+            <input type="text" class="form-control title" placeholder="Title" value="<%- title %>">
+        </div>
     </div>
-  </div>
 
-  <div class="form-group">
-    <label for="port" class="col-sm-2 control-label">Port</label>
-    <div class="col-sm-10">
-      <input type="number" class="form-control port" placeholder="Port" value="<%- port %>">
-      <p class="help-block">Server will use the designated port and the three following ports</p>
+    <div class="form-group">
+        <label for="port" class="col-sm-2 control-label">Port</label>
+        <div class="col-sm-10">
+            <input type="number" class="form-control port" placeholder="Port" value="<%- port %>">
+            <p class="help-block">Server will use the designated port and the three following ports</p>
+        </div>
     </div>
-  </div>
 
-  <div class="form-group">
-    <label for="max-players" class="col-sm-2 control-label">Max Players</label>
-    <div class="col-sm-10">
-      <input type="number" class="form-control max-players" placeholder="Max Players" value="<%- max_players %>">
+    <div class="form-group">
+        <label for="max-players" class="col-sm-2 control-label">Max Players</label>
+        <div class="col-sm-10">
+            <input type="number" class="form-control max-players" placeholder="Max Players" value="<%- max_players %>">
+        </div>
     </div>
-  </div>
 
-  <div class="form-group">
-    <label for="password" class="col-sm-2 control-label">Password</label>
-    <div class="col-sm-10">
-      <input type="text" class="form-control password" placeholder="Password" value="<%- password %>">
+    <div class="form-group">
+        <label for="password" class="col-sm-2 control-label">Password</label>
+        <div class="col-sm-10">
+            <input type="text" class="form-control password" placeholder="Password" value="<%- password %>">
+        </div>
     </div>
-  </div>
 
-  <div class="form-group">
-    <label for="admin-password" class="col-sm-2 control-label">Admin Password</label>
-    <div class="col-sm-10">
-      <input type="text" class="form-control admin-password" placeholder="Admin Password" value="<%- admin_password %>">
+    <div class="form-group">
+        <label for="admin-password" class="col-sm-2 control-label">Admin Password</label>
+        <div class="col-sm-10">
+            <input type="text" class="form-control admin-password" placeholder="Admin Password"
+                   value="<%- admin_password %>">
+        </div>
     </div>
-  </div>
 
-  <div class="form-group">
-    <label for="motd" class="col-sm-2 control-label">MOTD</label>
-    <div class="col-sm-10">
+    <div class="form-group">
+        <label for="motd" class="col-sm-2 control-label">MOTD</label>
+        <div class="col-sm-10">
       <textarea rows="3"
                 class="form-control motd"
                 placeholder="No MOTD will be shown"><%-motd %></textarea>
-      <p class="help-block">Message of the day. Shown to players when connected</p>
+            <p class="help-block">Message of the day. Shown to players when connected</p>
+        </div>
     </div>
-  </div>
 
-  <div class="form-group">
-    <label for="forcedDifficulty" class="col-sm-2 control-label">Difficulty</label>
-    <div class="col-sm-10">
-      <select class="form-control forcedDifficulty" value="<%- (forcedDifficulty || '') %>">
-        <%= ["", "Recruit", "Regular", "Veteran", "Custom"].map(function (difficulty) {
-          var selected = difficulty == forcedDifficulty ? 'selected' : '';
-          return '<option value="' + difficulty + '" ' + selected + '>' + (difficulty || 'Not set') + '</option>';
-        }).join('\n') %>
-      </select>
-      <p class="help-block">Difficulty that is always used unless mission rotation states otherwise</p>
+    <div class="form-group">
+        <label for="forcedDifficulty" class="col-sm-2 control-label">Difficulty</label>
+        <div class="col-sm-10">
+            <select class="form-control forcedDifficulty" value="<%- (forcedDifficulty || '') %>">
+                <%= ["", "Recruit", "Regular", "Veteran", "Custom"].map(function (difficulty) {
+                var selected = difficulty == forcedDifficulty ? 'selected' : '';
+                return '
+                <option value="' + difficulty + '"
+                ' + selected + '>' + (difficulty || 'Not set') + '</option>';
+                }).join('\n') %>
+            </select>
+            <p class="help-block">Difficulty that is always used unless mission rotation states otherwise</p>
+        </div>
     </div>
-  </div>
 
-  <div class="form-group">
-    <label class="col-sm-2 control-label">File Patching</label>
-    <div class="col-sm-10">
-      <div class="checkbox">
-        <label>
-          <input type="checkbox" class="allowed-file-patching" <% if (allowed_file_patching === 2) { %>checked="checked"<% } %>> Allow file patching for clients
-          <p class="help-block">Required for client userconfigs</p>
-        </label>
-      </div>
+    <div class="form-group">
+        <label class="col-sm-2 control-label">File Patching</label>
+        <div class="col-sm-10">
+            <div class="checkbox">
+                <label>
+                    <input type="checkbox" class="allowed-file-patching" <% if (allowed_file_patching === 2) {
+                    %>checked="checked"<% } %>> Allow file patching for clients
+                    <p class="help-block">Required for client userconfigs</p>
+                </label>
+            </div>
 
-      <div class="checkbox">
-        <label>
-          <input type="checkbox" class="file-patching" <% if (file_patching) { %>checked="checked"<% } %>> Use file patching on server
-          <p class="help-block">Required for server userconfigs</p>
-        </label>
-      </div>
+            <div class="checkbox">
+                <label>
+                    <input type="checkbox" class="file-patching" <% if (file_patching) { %>checked="checked"<% } %>> Use
+                    file patching on server
+                    <p class="help-block">Required for server userconfigs</p>
+                </label>
+            </div>
+        </div>
     </div>
-  </div>
 
-  <div class="form-group">
-    <label for="headless-clients" class="col-sm-2 control-label">Headless Clients</label>
-    <div class="col-sm-10">
-      <input type="number" class="form-control headless-clients" placeholder="Headless Clients" value="<%- number_of_headless_clients %>">
-      <p class="help-block">Number of headless clients that will be launched</p>
+    <div class="form-group">
+        <label for="headless-clients" class="col-sm-2 control-label">Headless Clients</label>
+        <div class="col-sm-10">
+            <input type="number" class="form-control headless-clients" placeholder="Headless Clients"
+                   value="<%- number_of_headless_clients %>">
+            <p class="help-block">Number of headless clients that will be launched</p>
+        </div>
     </div>
-  </div>
 
-  <div class="form-group">
-    <div class="col-sm-offset-2 col-sm-10">
-      <div class="checkbox">
-        <label>
-          <input type="checkbox" class="auto-start" <% if (auto_start) { %>checked="checked"<% } %>> Auto Start when manager launches
-        </label>
-      </div>
+    <div class="form-group">
+        <div class="col-sm-offset-2 col-sm-10">
+            <div class="checkbox">
+                <label>
+                    <input type="checkbox" class="auto-start" <% if (auto_start) { %>checked="checked"<% } %>> Auto
+                    Start when manager launches
+                </label>
+            </div>
+        </div>
     </div>
-  </div>
 
-  <div class="form-group">
-    <div class="col-sm-offset-2 col-sm-10">
-      <div class="checkbox">
-        <label>
-          <input type="checkbox" class="battle-eye" <% if (battle_eye) { %>checked="checked"<% } %>> BattleEye
-        </label>
-      </div>
+    <div class="form-group">
+        <div class="col-sm-offset-2 col-sm-10">
+            <div class="checkbox">
+                <label>
+                    <input type="checkbox" class="battle-eye" <% if (battle_eye) { %>checked="checked"<% } %>> BattleEye
+                </label>
+            </div>
+        </div>
     </div>
-  </div>
 
-  <div class="form-group">
-    <div class="col-sm-offset-2 col-sm-10">
-      <div class="checkbox">
-        <label>
-          <input type="checkbox" class="persistent" <% if (persistent) { %>checked="checked"<% } %>> Persistent
-        </label>
-      </div>
+    <div class="form-group">
+        <div class="col-sm-offset-2 col-sm-10">
+            <div class="checkbox">
+                <label>
+                    <input type="checkbox" class="persistent" <% if (persistent) { %>checked="checked"<% } %>>
+                    Persistent
+                </label>
+            </div>
+        </div>
     </div>
-  </div>
 
-  <div class="form-group">
-    <div class="col-sm-offset-2 col-sm-10">
-      <div class="checkbox">
-        <label>
-          <input type="checkbox" class="von" <% if (von) { %>checked="checked"<% } %>> Voice over Net
-        </label>
-      </div>
+    <div class="form-group">
+        <div class="col-sm-offset-2 col-sm-10">
+            <div class="checkbox">
+                <label>
+                    <input type="checkbox" class="von" <% if (von) { %>checked="checked"<% } %>> Voice over Net
+                </label>
+            </div>
+        </div>
     </div>
-  </div>
 
-  <div class="form-group">
-    <div class="col-sm-offset-2 col-sm-10">
-      <div class="checkbox">
-        <label>
-          <input type="checkbox" class="verify_signatures" <% if (verify_signatures) { %>checked="checked"<% } %>> Verify Signatures
-        </label>
-      </div>
+    <div class="form-group">
+        <div class="col-sm-offset-2 col-sm-10">
+            <div class="checkbox">
+                <label>
+                    <input type="checkbox" class="verify_signatures" <% if (verify_signatures) { %>checked="checked"<% }
+                    %>> Verify Signatures
+                </label>
+            </div>
+        </div>
     </div>
-  </div>
 
-  <div class="form-group">
-    <label for="additional-configuration-options" class="col-sm-2 control-label">Additional configuration options</label>
-    <div class="col-sm-10">
+    <div class="form-group">
+        <label for="additional-configuration-options" class="col-sm-2 control-label">Additional configuration
+            options</label>
+        <div class="col-sm-10">
       <textarea rows="3"
                 class="form-control additional-configuration-options"
                 placeholder="No additional configuration options"><%- additionalConfigurationOptions %></textarea>
-      <p class="help-block">Additional configuration options that will be appended to the generated server.cfg config file. Avoid (re)declaring any of the options above here.</p>
+            <p class="help-block">Additional configuration options that will be appended to the generated server.cfg
+                config file. Avoid (re)declaring any of the options above here.</p>
+        </div>
     </div>
-  </div>
 </form>

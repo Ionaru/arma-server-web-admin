@@ -1,9 +1,9 @@
-var Backbone = require('backbone')
+var Backbone = require('backbone');
 
 module.exports = Backbone.Model.extend({
-  defaults: {
-    name: ''
-  },
-  idAttribute: 'name',
-  urlRoot: '/api/mods/'
-})
+    defaults: {
+        name: ''
+    },
+    idAttribute: 'name',
+    urlRoot: '/api/mods/'
+});

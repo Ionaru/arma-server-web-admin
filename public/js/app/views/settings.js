@@ -1,18 +1,18 @@
-var _ = require('underscore')
-var Marionette = require('marionette')
+var _ = require('underscore');
+var Marionette = require('marionette');
 
-var tpl = require('tpl/settings.html')
+var tpl = require('tpl/settings.html');
 
 module.exports = Marionette.ItemView.extend({
-  template: _.template(tpl),
+    template: _.template(tpl),
 
-  modelEvents: {
-    change: 'render'
-  },
+    modelEvents: {
+        change: 'render'
+    },
 
-  templateHelpers: {
-    isTypeChecked: function (type) {
-      return this.type === type ? 'checked' : ''
+    templateHelpers: {
+        isTypeChecked: function (type) {
+            return this.type === type ? 'checked' : '';
+        }
     }
-  }
-})
+});

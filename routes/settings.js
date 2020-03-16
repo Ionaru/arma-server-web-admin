@@ -1,11 +1,11 @@
-var express = require('express')
+var express = require('express');
 
 module.exports = function (settings) {
-  var router = express.Router()
+    var router = express.Router();
 
-  router.get('/', function (req, res) {
-    res.json(settings.getPublicSettings())
-  })
+    router.get('/', function (req, res) {
+        res.json(settings.getPublicSettings());
+    });
 
-  return router
-}
+    return router;
+};

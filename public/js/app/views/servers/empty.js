@@ -1,13 +1,13 @@
-var _ = require('underscore')
-var Marionette = require('marionette')
+var _ = require('underscore');
+var Marionette = require('marionette');
 
-var tpl = require('tpl/servers/empty.html')
+var tpl = require('tpl/servers/empty.html');
 
 module.exports = Marionette.ItemView.extend({
-  tagName: 'tr',
-  template: _.template(tpl),
+    tagName: 'tr',
+    template: _.template(tpl),
 
-  initialize: function (options) {
-    this.servers = options.servers
-  }
-})
+    initialize: function (options) {
+        this.servers = options.servers;
+    }
+});

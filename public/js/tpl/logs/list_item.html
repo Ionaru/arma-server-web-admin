@@ -1,23 +1,23 @@
 <td>
-  <% if (size < 100 * 1024 * 1024) { %>
+    <% if (size < 100 * 1024 * 1024) { %>
     <!-- Only show files under 100 MB -->
     <a href='/api/logs/<%-name%>/view' target=_blank><%-name%></a>
-  <% } else { %>
+    <% } else { %>
     <%-name%>
-  <% } %>
+    <% } %>
 </td>
 <td style="text-align: right; white-space: nowrap;">
-  <%-formattedSize%>
+    <%-formattedSize%>
 </td>
 <td>
-  <a class="btn btn-primary btn-xs" href="/api/logs/<%-name%>/download">
-    <span class="glyphicon glyphicon-download"></span>
-    Download
-  </a>
+    <a class="btn btn-primary btn-xs" href="/api/logs/<%-name%>/download">
+        <span class="glyphicon glyphicon-download"></span>
+        Download
+    </a>
 </td>
 <td>
-  <a class="btn btn-danger btn-xs destroy ladda-button pull-right" data-style="expand-left">
-    <span class="glyphicon glyphicon-trash"></span>
-    Delete
-  </a>
+    <a class="btn btn-danger btn-xs destroy ladda-button pull-right" data-style="expand-left">
+        <span class="glyphicon glyphicon-trash"></span>
+        Delete
+    </a>
 </td>

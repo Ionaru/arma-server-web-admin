@@ -1,40 +1,40 @@
 <td>
-  <% if (typeof(pid) != "undefined" && pid) { %>
+    <% if (typeof(pid) != "undefined" && pid) { %>
     <% if (state) { %>
-      <span class="label label-success">Online
+    <span class="label label-success">Online
       (<%- (state.players) ? state.players.length : '?' %>/<%- state.maxplayers %>)
       </span>
     <% } else { %>
-      <span class="label label-info">Launching</span>
+    <span class="label label-info">Launching</span>
     <% } %>
-  <% } else { %>
+    <% } else { %>
     <span class="label label-default">Offline</span>
-  <% } %>
+    <% } %>
 </td>
 <td>
-  <% if (typeof(pid) != "undefined" && pid) { %>
-  <button type="button" class="btn btn-primary btn-xs stop pull-right">
-    <span class="glyphicon glyphicon-stop"></span> Stop
-  </button>
-  <% } else { %>
-  <button type="button" class="btn btn-primary btn-xs start pull-right">
-    <span class="glyphicon glyphicon-play"></span> Start
-  </button>
-  <% } %>
+    <% if (typeof(pid) != "undefined" && pid) { %>
+    <button type="button" class="btn btn-primary btn-xs stop pull-right">
+        <span class="glyphicon glyphicon-stop"></span> Stop
+    </button>
+    <% } else { %>
+    <button type="button" class="btn btn-primary btn-xs start pull-right">
+        <span class="glyphicon glyphicon-play"></span> Start
+    </button>
+    <% } %>
 
 
 </td>
 <td><%-port%></td>
 <td style="width: 100%;">
-  <a href='#servers/<%-id%>'><%-title%></a>
+    <a href='#servers/<%-id%>'><%-title%></a>
 </td>
 <td>
-  <button type="button" class="btn btn-success btn-xs clone pull-right">
-    <span class="glyphicon glyphicon-plus-sign"></span> Clone
-  </button>
+    <button type="button" class="btn btn-success btn-xs clone pull-right">
+        <span class="glyphicon glyphicon-plus-sign"></span> Clone
+    </button>
 </td>
 <td>
-  <button type="button" class="btn btn-danger btn-xs delete pull-right">
-    <span class="glyphicon glyphicon-trash"></span> Delete
-  </button>
+    <button type="button" class="btn btn-danger btn-xs delete pull-right">
+        <span class="glyphicon glyphicon-trash"></span> Delete
+    </button>
 </td>
