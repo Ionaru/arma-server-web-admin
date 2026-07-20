@@ -27,6 +27,21 @@ describe('App', function () {
         requestPath('/api/mods', /json/, done);
     });
 
+    it('should serve op mode', function (done) {
+        requestPath('/api/op-mode', /json/, done);
+    });
+
+    // Rejected regardless of what op-mode.json happens to hold, unlike the run endpoint, whose
+    // outcome depends on the ambient config. That is covered in isolation in test/lib/op-mode.js.
+    it('should reject an invalid op mode schedule', function (done) {
+        request(app)
+            .put('/api/op-mode')
+            .send({enabled: true, days: [0], time: 'half seven', opServerId: 'whatever'})
+            .expect('Content-Type', /json/)
+            .expect(400)
+            .end(done);
+    });
+
     it('should serve servers', function (done) {
         requestPath('/api/servers', /json/, done);
     });

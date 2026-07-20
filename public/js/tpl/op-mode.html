@@ -1,0 +1,127 @@
+<h1>Op Mode</h1>
+
+<p class="text-muted">
+    At the scheduled time every server except the op server is stopped, and the op server is
+    restarted so it begins the operation with clean memory. Nothing is started again afterwards:
+    the other servers come back with the nightly restart.
+</p>
+
+<% if (loadFailed) { %>
+<div class="alert alert-danger">
+    <strong>The schedule could not be loaded and is not running.</strong>
+    <br><%- loadFailed %>
+    <br>Saving below will replace the unreadable schedule with the settings on this page.
+</div>
+<% } %>
+
+<% if (opServerMissing) { %>
+<div class="alert alert-danger">
+    <strong>The op server no longer exists, so op mode will not run.</strong>
+    <br>
+    It was <%- opServerTitle || opServerId %> (<code><%- opServerId %></code>). A server's identity
+    is derived from its title, so renaming or deleting one breaks this link. Pick the server again
+    below and save.
+</div>
+<% } %>
+
+<% if (lastError) { %>
+<div class="alert alert-danger">
+    <strong>The last op mode run failed.</strong>
+    <br><%- lastError %>
+    <br>Check the servers on the dashboard before relying on this.
+</div>
+<% } %>
+
+<% if (lastSkippedFormatted) { %>
+<div class="alert alert-warning">
+    The run scheduled for <strong><%- lastSkippedFormatted %></strong> was skipped, because the
+    panel was not running at the time. Nothing was stopped. Use Run now if you still want it.
+</div>
+<% } %>
+
+<form class="form-horizontal">
+    <div class="form-group">
+        <label class="col-sm-2 control-label">Enabled</label>
+        <div class="col-sm-10">
+            <div class="checkbox">
+                <label>
+                    <input type="checkbox" class="enabled" <%- enabled ? 'checked' : '' %>>
+                    Run automatically on the schedule below
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label class="col-sm-2 control-label">Days</label>
+        <div class="col-sm-10">
+            <% _.each(dayNames, function (dayName, dayNumber) { %>
+            <label class="checkbox-inline">
+                <input type="checkbox" class="day" value="<%- dayNumber %>" <%- isDaySelected(dayNumber) %>>
+                <%- dayName %>
+            </label>
+            <% }); %>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label for="op-mode-time" class="col-sm-2 control-label">Time</label>
+        <div class="col-sm-10">
+            <input type="time" id="op-mode-time" class="form-control time" value="<%- time %>">
+            <p class="help-block">
+                The panel host's own clock<% if (timezone) { %> (<%- timezone %>)<% } %>, not your
+                browser's.
+            </p>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label for="op-mode-server" class="col-sm-2 control-label">Op server</label>
+        <div class="col-sm-10">
+            <select id="op-mode-server" class="form-control op-server">
+                <option value="">Select a server</option>
+                <% servers.each(function (server) { %>
+                <option value="<%- server.get('id') %>" <%- isOpServer(server.get('id')) %>>
+                    <%- server.get('title') %>
+                </option>
+                <% }); %>
+                <% if (opServerMissing) { %>
+                <%# Keeps the orphaned id selectable, so saving from this state cannot silently %>
+                <%# blank the configuration just because the option list no longer contains it. %>
+                <option value="<%- opServerId %>" selected>
+                    <%- opServerTitle || opServerId %> (no longer exists)
+                </option>
+                <% } %>
+            </select>
+            <p class="help-block">
+                This server is restarted. Every other server is stopped.
+            </p>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label class="col-sm-2 control-label">Next run</label>
+        <div class="col-sm-10">
+            <p class="form-control-static">
+                <% if (nextRunFormatted) { %>
+                <strong><%- nextRunFormatted %></strong>
+                <% } else { %>
+                <span class="text-muted">Not scheduled</span>
+                <% } %>
+            </p>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <div class="col-sm-offset-2 col-sm-10">
+            <button type="button" class="btn btn-primary save">
+                <span class="glyphicon glyphicon-floppy-disk"></span> Save
+            </button>
+
+            <button type="button" class="btn btn-warning run pull-right" <%- running ? 'disabled' : '' %>>
+                <span class="glyphicon glyphicon-flash"></span>
+                <%- running ? 'Running...' : 'Run now' %>
+            </button>
+        </div>
+    </div>
+</form>

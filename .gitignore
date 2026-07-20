@@ -45,6 +45,8 @@ jspm_packages
 # Project stuff
 config.js
 servers.json
+op-mode.json
+op-mode.json.tmp
 
 .idea/
 *.iml
