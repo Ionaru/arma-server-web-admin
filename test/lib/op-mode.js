@@ -557,6 +557,34 @@ describe('OpMode', function () {
             });
         });
 
+        // Design rule 3, via setConfig rather than tick. A save made while the host clock is rolled
+        // back must not pull lastWindow into the past: doing so would re-arm a window that already
+        // fired, exactly the double fire the tick() guard refuses. setConfig only ever advances it.
+        it('should not re-arm a consumed window when saved during a backward clock step', function () {
+            var op = fakeServer('op', true);
+            var opMode = opModeWith([op]);
+
+            // The window fires normally and is recorded as consumed.
+            tk.freeze(OP_NIGHT(19, 30, 2));
+            opMode.tick();
+            op.restarts.should.eql(1);
+
+            var consumed = opMode.lastWindow;
+
+            // NTP (or a VM time sync) pulls the host clock back across the window, and an operator
+            // saves the schedule while it is rolled back.
+            tk.freeze(OP_NIGHT(19, 29, 20));
+            opMode.setConfig({enabled: true, days: [SUNDAY], time: '19:30', opServerId: 'op'}, function () {});
+
+            // lastWindow must not have moved backwards to the previous week.
+            opMode.lastWindow.should.eql(consumed);
+
+            // When the clock catches up and crosses the window again, it must not fire a second time.
+            tk.freeze(OP_NIGHT(19, 30, 5));
+            opMode.tick();
+            op.restarts.should.eql(1);
+        });
+
         it('should record the op server title for display', function (done) {
             var opMode = opModeWith([fakeServer('op', true)]);
             opMode.manager.servers[0].title = 'Op Server';
