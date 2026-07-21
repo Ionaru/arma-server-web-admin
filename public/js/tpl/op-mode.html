@@ -86,8 +86,8 @@
                 </option>
                 <% }); %>
                 <% if (opServerMissing) { %>
-                <%# Keeps the orphaned id selectable, so saving from this state cannot silently %>
-                <%# blank the configuration just because the option list no longer contains it. %>
+                <% /* Keeps the orphaned id selectable, so saving from this state cannot silently
+                      blank the configuration just because the option list no longer contains it. */ %>
                 <option value="<%- opServerId %>" selected>
                     <%- opServerTitle || opServerId %> (no longer exists)
                 </option>
