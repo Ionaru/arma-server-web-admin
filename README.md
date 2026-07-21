@@ -13,6 +13,8 @@ A simple to use web admin panel for Arma servers.
 - Download game logs
 - Upload missions from your local computer and from Steam Workshop to the server
 - Download and update mods from withSIX
+- Op mode: on a weekly schedule, stop every server except the one hosting an operation and restart
+  that one, so it starts the op with clean memory. See [docs/op-mode.md](docs/op-mode.md)
 
 ## Requirements
 

@@ -7,16 +7,19 @@ var ServersView = require('app/views/servers/list');
 var LogsListView = require('app/views/logs/list');
 var MissionsView = require('app/views/missions/index');
 var ModsListView = require('app/views/mods/list');
+var OpModeView = require('app/views/op-mode');
 var ServerView = require('app/views/servers/view');
 var Logs = require('app/collections/logs');
 var Missions = require('app/collections/missions');
 var Mods = require('app/collections/mods');
+var OpMode = require('app/models/op-mode');
 var Settings = require('app/models/settings');
 var Servers = require('app/collections/servers');
 
 var $body = $('body');
 var missions = new Missions();
 var mods = new Mods();
+var opMode = new OpMode();
 var settings = new Settings();
 var servers = new Servers();
 var layoutView = new LayoutView({el: $body}).render();
@@ -27,6 +30,7 @@ module.exports = Backbone.Router.extend({
         logs: 'logs',
         missions: 'missions',
         mods: 'mods',
+        'op-mode': 'opMode',
         'servers/:id': 'server',
         '': 'home'
     },
@@ -43,6 +47,9 @@ module.exports = Backbone.Router.extend({
         });
         socket.on('mods', function (_mods) {
             mods.set(_mods);
+        });
+        socket.on('op-mode', function (_opMode) {
+            opMode.set(_opMode);
         });
         socket.on('servers', function (_servers) {
             servers.set(_servers);
@@ -73,6 +80,10 @@ module.exports = Backbone.Router.extend({
 
     mods: function () {
         layoutView.content.show(new ModsListView({collection: mods}));
+    },
+
+    opMode: function () {
+        layoutView.content.show(new OpModeView({model: opMode, servers: servers}));
     },
 
     server: function (id) {
