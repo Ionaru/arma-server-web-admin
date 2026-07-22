@@ -24,5 +24,6 @@ module.exports = {
   discord: { // Optional. When both are set, op mode restarts are announced in this Discord channel.
     token: '', // Bot token. Leave blank to disable Discord notifications.
     channelId: '', // Id of the channel to post restart messages in.
+    onlineTimeoutMinutes: 15, // How long to wait for the op server to come back before warning. Defaults to 15.
   },
 };

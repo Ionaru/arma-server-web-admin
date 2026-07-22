@@ -50,8 +50,11 @@ var opMode = new OpMode(manager);
 var discord = new Discord(config.discord);
 
 // Subscribes to op mode's run events and posts to Discord. Kept in a variable so its subscriptions
-// stay referenced for the life of the process.
-var opModeNotifier = new OpModeNotifier(opMode, discord);
+// stay referenced for the life of the process. Only onlineTimeoutMinutes is read here; the token
+// and channel id belong to the Discord client above.
+var opModeNotifier = new OpModeNotifier(opMode, discord, {
+    onlineTimeoutMinutes: config.discord && config.discord.onlineTimeoutMinutes
+});
 
 app.use('/api/discord', require('./routes/discord')(discord));
 app.use('/api/logs', require('./routes/logs')(logs));

@@ -163,8 +163,9 @@ it.
 
 Holds the only new state in the feature: the run start time and the in-flight online watcher.
 
-- Constructed with `(opMode, manager, discord, options)`. `options.onlineTimeoutMs` defaults to a
-  named module constant (`OpModeNotifier.onlineTimeoutMs = 15 * 60 * 1000`), overridable in tests.
+- Constructed with `(opMode, discord, options)`. `options.onlineTimeoutMinutes` (from
+  `config.discord`) is validated by `OpModeNotifier.resolveTimeoutMinutes`, falling back to
+  `OpModeNotifier.defaultOnlineTimeoutMinutes` (15) for anything that is not a positive finite number.
 - Subscribes to the three op mode events.
 - On `run-started`: record start time, post "🔄 Restarting **<title>** for the operation.", then
   begin waiting for the op server to come online (`waitUntilOnline`). On success post "✅
@@ -223,13 +224,16 @@ a fixed "Test message from the Arma server panel." and reports the result:
 
 ```js
 discord: {
-  token: '',      // Bot token. Leave blank to disable Discord notifications.
-  channelId: '',  // Id of the channel to post restart messages in.
+  token: '',                // Bot token. Leave blank to disable Discord notifications.
+  channelId: '',            // Id of the channel to post restart messages in.
+  onlineTimeoutMinutes: 15, // Online-wait before the warning. Optional, defaults to 15.
 },
 ```
 
-No `enabled` flag: on iff both fields are set, mirroring `lib/setup-basic-auth.js` (auth is on iff
-username and password are both set).
+No `enabled` flag: on iff both credential fields are set, mirroring `lib/setup-basic-auth.js` (auth
+is on iff username and password are both set). `onlineTimeoutMinutes` is optional; the notifier
+validates it (positive finite number, else 15) and the warning message derives its wording from the
+value in force, so the two can never disagree.
 
 ### `app.js` (edit) — wiring
 
@@ -309,7 +313,7 @@ Following the existing hand-rolled-fakes style (no mocking library; `should` + m
 - `test/public/templates.js` already compiles every template; the new op-mode.html markup is covered
   by it automatically.
 
-Timeout constants (`OpModeNotifier.onlineTimeoutMs`) are named module properties so tests can shorten
+Timeout constants (`OpModeNotifier.defaultOnlineTimeoutMinutes`) are named module properties so tests can shorten
 them, following `Server.stopTimeout` and `OpMode.tickMs`.
 
 Run: `npm test`. Lint: `npx eslint app.js webpack.config.js config.js.example lib routes public/js test`
@@ -331,7 +335,8 @@ Matching how op mode itself shipped (code + operator doc + CLAUDE.md in one chan
 
 1. "Run now" posts to Discord too (same `run()`, same effect on the fleet).
 2. Duration measured from the "restarting" message, not from process spawn.
-3. 15-minute online timeout, as a named code constant, not a config field.
+3. Online timeout defaults to 15 minutes and is operator-configurable via
+   `discord.onlineTimeoutMinutes`; the warning message always names the value actually in force.
 4. A failed Discord POST is console-only, never a panel banner.
 5. No role ping; plain text.
 6. Status row proves config is filled; a **Send test message** button turns that into real

@@ -131,13 +131,19 @@ panel:
     discord: {
       token: 'your-bot-token',
       channelId: '123456789012345678',
+      onlineTimeoutMinutes: 15,
     },
 
 The bot must be a member of the server and have permission to send messages in that channel. It does
 not need to appear online; it will show as offline in the member list, which is normal for a
 notify-only bot.
 
-Leave either field blank to turn notifications off.
+`onlineTimeoutMinutes` is how long the panel waits for the op server to come back before it posts the
+"has not come back online" warning. It is optional and defaults to 15 minutes; the warning always
+names whatever value is in force. Set it higher for a heavy modset that takes longer to load. If you
+leave it out, or set it to something that is not a positive number, it falls back to 15.
+
+Leave the token or channel id blank to turn notifications off.
 
 ### The Discord row on the Op Mode page
 
