@@ -115,13 +115,17 @@ runs:
 - When a run starts: **Restarting <op server> for the operation.**
 - When the op server is back online and joinable: **<op server> is back online (took Xm Ys).** The
   time is measured from the restart message, so it includes the few seconds spent stopping the
-  other servers.
-- If the op server does not come back within 15 minutes: **<op server> has not come back online
-  after 15 minutes.**
+  other servers. "Joinable" means the panel's own status query answered, not just that the process
+  started, so this is the point where people can actually log in.
+- If the op server started but dropped out again before it finished loading (a bad modset or
+  mission, for example): **<op server> started but went offline again before coming online.**
+- If it simply never answers within the timeout (15 minutes by default, see below): **<op server>
+  has not come back online after 15 minutes.**
 - If the restart fails outright (for example the op server would not stop in time): **<op server>
   failed to restart: ...**
 
-Both the scheduled run and **Run now** post these messages.
+Exactly one of the last three (online, gave up, or failed) is posted per run. Both the scheduled run
+and **Run now** post these messages.
 
 ### Turning it on
 

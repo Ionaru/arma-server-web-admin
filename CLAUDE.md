@@ -183,19 +183,23 @@ production box.
 ### Discord notifications
 
 Op mode restarts are announced to a Discord channel, wired as three decoupled modules so
-`lib/op-mode.js` only gained two `emit()` calls (`run-started`, `run-failed`) and no new state:
+`lib/op-mode.js` only gained three `emit()` calls (`run-started`, `run-restarted`, `run-failed`) and
+no new state:
 
 - `lib/discord.js` posts one HTTPS POST to the Discord REST API (`POST /api/v10/channels/:id/messages`,
   built-in `https`, no dependency). Discord **requires** a `User-Agent: DiscordBot (url, version)`
-  header or Cloudflare blocks the request. `Discord.isConfigured(config)` is the single source of
-  truth for "is Discord on".
-- `lib/op-mode-notifier.js` subscribes to the two op mode events and decides the message text. It
-  owns the only new state: the in-flight run and its online-wait.
+  header or Cloudflare blocks the request. `send()` also sets `allowed_mentions: {parse: []}` (the
+  op server title is operator-editable and interpolated in, so an `@everyone` in a title must not
+  ping) and truncates to 2000 chars. `Discord.isConfigured(config)` is the single source of truth
+  for "is Discord on".
+- `lib/op-mode-notifier.js` subscribes to the op mode events and decides the message text. It owns
+  the only new state: the in-flight run and its online-wait, plus a cancel handle so an overlapping
+  run supersedes rather than stacks.
 - `Server.prototype.waitUntilOnline` resolves off the gamedig `state` poll, because `restart()`'s
   callback fires at process spawn, minutes before the game is joinable. That is what the "back
   online, took X" timing is measured against.
 
-Two traps:
+Three traps:
 
 1. The token lives in `config.js`. `lib/settings.js` exposes only a derived boolean
    `discordEnabled`, never `config.discord`, because `getPublicSettings()` is broadcast over
@@ -204,6 +208,10 @@ Two traps:
    `Backbone.history` from inside the `servers` handler, so the Op Mode page's Discord row needs
    `settings` to have arrived before the first render. The frontend also listens for
    `change:discordEnabled`, so the order is a belt-and-braces, not the sole guarantee.
+3. The online-wait is armed on `run-restarted` (emitted once the *replacement* process is spawned),
+   never on `run-started`. At `run-started` the op server is still the old process and still
+   answering gamedig every 5s, so a wait armed there resolves a false "back online" before anything
+   is even stopped. This was the shipped-then-fixed bug; do not move the wait back to `run-started`.
 
 ## Testing and linting
 

@@ -293,6 +293,44 @@ describe('OpMode', function () {
             });
         });
 
+        it('emits run-restarted with the op server after a successful restart', function (done) {
+            var op = fakeServer('op', true);
+            var other = fakeServer('other', true);
+            var opMode = opModeWith([op, other]);
+
+            var restartedWith = null;
+            opMode.on('run-restarted', function (server) {
+                restartedWith = server;
+                // The op server has been restarted by the time run-restarted fires.
+                op.restarts.should.eql(1);
+            });
+
+            opMode.run(function (err) {
+                (err === undefined || err === null).should.be.true();
+                restartedWith.should.equal(op);
+                done();
+            });
+        });
+
+        it('does not emit run-restarted when the restart fails', function (done) {
+            var op = fakeServer('op', true);
+            op.restart = function (cb) {
+                cb(new Error('did not stop in time'));
+            };
+            var opMode = opModeWith([op]);
+
+            var restarted = false;
+            opMode.on('run-restarted', function () {
+                restarted = true;
+            });
+
+            opMode.run(function (err) {
+                err.should.be.an.Error();
+                restarted.should.be.false();
+                done();
+            });
+        });
+
         it('emits run-failed with the op server and error when the restart fails', function (done) {
             var op = fakeServer('op', true);
             op.restart = function (cb) {

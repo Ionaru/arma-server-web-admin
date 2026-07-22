@@ -186,18 +186,20 @@ Holds the only new state in the feature: the run start time and the in-flight on
   to call `waitUntilOnline` on it). Holding that live reference for the duration of one run also
   sidesteps the title-derived-id rename trap: the notifier follows the object, not a re-resolved id.
   No server count (per product decision).
-- `run-restarted`: not required as a separate op-mode event; "back online" is detected by the
-  notifier via `waitUntilOnline`, not by op mode. (Op mode's own `done` callback fires at process
-  spawn, too early to mean "online".) The notifier keys "back online" off the server, not off op
-  mode. So op mode emits only `run-started` and `run-failed`.
+- `run-restarted`: emitted from op mode's `done()` success path (see the review-revision section
+  below). This is the signal that the *replacement* process has been spawned, so the notifier can
+  safely arm `waitUntilOnline` against the new instance rather than the old one. Payload: the op
+  server object. (The original design omitted this event and armed the wait at `run-started`; that
+  was the false-"back online" bug found in review.)
 - `run-failed`: emitted from op mode's `done(err)` path when `err` is set. Payload: op server +
   `err.message`.
 
 These are additive `emit()` calls on the existing EventEmitter; no existing behaviour changes. The
 existing `op-mode` event and its socket broadcast are untouched.
 
-> Note: op mode emits **two** new events, `run-started` and `run-failed`. "Back online" and the
-> timeout are the notifier's own derivation from server state, not op-mode events.
+> Note: op mode emits **three** new events, `run-started`, `run-restarted`, and `run-failed`. The
+> notifier derives the four terminal messages (online / went-offline / timed-out / failed) from
+> these plus the server's own `state` poll.
 
 ### `lib/settings.js` (edit)
 
@@ -276,11 +278,25 @@ value in force, so the two can never disagree.
 ```
 🔄 Restarting **7R Op Server** for the operation.
 ✅ **7R Op Server** is back online (took 4m 12s).
+⚠️ **7R Op Server** started but went offline again before coming online.
 ⚠️ **7R Op Server** has not come back online after 15 minutes.
 ⚠️ **7R Op Server** failed to restart: did not stop in time, not restarting.
 ```
 
 Server name is the op server's `title`. Duration formatted `<m>m <s>s` (or `<s>s` under a minute).
+Exactly one terminal message (online / went-offline / timed-out / failed) is posted per run.
+
+### Detecting "back online" against the right process (revised after review)
+
+The online-wait must not be armed at `run-started`: at that point the op server is still the *old*
+process, still answering the 5s gamedig poll, so the next poll resolves a false "back online" before
+the server is even stopped, and the removed listener means the real transition posts nothing. Op
+mode therefore emits a third event, `run-restarted`, from its `done()` success path once the
+replacement process has been spawned; the notifier arms `waitUntilOnline` only then, so it watches
+the new instance. `waitUntilOnline` distinguishes its two failure modes (`reason: 'timeout'` vs
+`reason: 'offline'` when the process exits during load) and returns a cancel handle, so an
+overlapping run (op mode's `running` clears at spawn, not at joinable) supersedes the previous
+wait instead of stacking a second `state` listener.
 
 ## Error handling
 
