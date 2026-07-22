@@ -71,6 +71,7 @@ module.exports = Marionette.ItemView.extend({
             dayNames: DAY_NAMES,
             servers: this.servers,
             discordEnabled: settings ? !!settings.get('discordEnabled') : false,
+            discordTesting: !!this.testing,
 
             isDaySelected: function (day) {
                 return (model.get('days') || []).indexOf(day) !== -1 ? 'checked' : '';
@@ -166,18 +167,27 @@ module.exports = Marionette.ItemView.extend({
     testDiscord: function (event) {
         event.preventDefault();
 
-        var $button = this.$('.test-discord');
-        if ($button.prop('disabled')) {
+        if (this.testing) {
             return;
         }
 
-        $button.prop('disabled', true);
+        this.testing = true;
+        // Reflect the in-flight state now, and survive a socket-driven re-render: templateHelpers
+        // reads this.testing, so a re-render keeps the button disabled rather than rendering a fresh
+        // enabled one that would allow a second concurrent request.
+        this.$('.test-discord').prop('disabled', true);
+
+        var self = this;
 
         $.ajax({
             url: '/api/discord/test',
             type: 'POST',
+            complete: function () {
+                self.testing = false;
+                // Re-query rather than caching a node: a re-render mid-request replaces the button.
+                self.$('.test-discord').prop('disabled', false);
+            },
             success: function () {
-                $button.prop('disabled', false);
                 sweetAlert({
                     title: 'Sent',
                     text: 'A test message was posted to Discord.',
@@ -185,7 +195,6 @@ module.exports = Marionette.ItemView.extend({
                 });
             },
             error: function (err) {
-                $button.prop('disabled', false);
                 sweetAlert({
                     title: 'Error',
                     text: errorText(err),
