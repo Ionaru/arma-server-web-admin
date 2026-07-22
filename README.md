@@ -53,6 +53,7 @@ serverMods | Mods that always and only will be used by the game servers
 auth | If both username and password is set, HTTP Basic Auth will be used
 prefix | Text prepended to all game servers name
 suffix | Text appended to all game servers name
+discord | Optional `{ token, channelId }`. When both are set, op mode restarts are announced in that Discord channel
 
 ## How to Use
 

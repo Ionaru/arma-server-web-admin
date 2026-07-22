@@ -180,6 +180,31 @@ Note the related pre-existing hazard: `manager.load()` is **not** gated that way
 `app.js` does auto-start servers with `auto_start` set. Be careful running the test suite on the
 production box.
 
+### Discord notifications
+
+Op mode restarts are announced to a Discord channel, wired as three decoupled modules so
+`lib/op-mode.js` only gained two `emit()` calls (`run-started`, `run-failed`) and no new state:
+
+- `lib/discord.js` posts one HTTPS POST to the Discord REST API (`POST /api/v10/channels/:id/messages`,
+  built-in `https`, no dependency). Discord **requires** a `User-Agent: DiscordBot (url, version)`
+  header or Cloudflare blocks the request. `Discord.isConfigured(config)` is the single source of
+  truth for "is Discord on".
+- `lib/op-mode-notifier.js` subscribes to the two op mode events and decides the message text. It
+  owns the only new state: the in-flight run and its online-wait.
+- `Server.prototype.waitUntilOnline` resolves off the gamedig `state` poll, because `restart()`'s
+  callback fires at process spawn, minutes before the game is joinable. That is what the "back
+  online, took X" timing is measured against.
+
+Two traps:
+
+1. The token lives in `config.js`. `lib/settings.js` exposes only a derived boolean
+   `discordEnabled`, never `config.discord`, because `getPublicSettings()` is broadcast over
+   socket.io to every browser. If you add fields to the public settings, keep the token out.
+2. `app.js` emits `settings` before `servers` on socket connection on purpose: `router.js` starts
+   `Backbone.history` from inside the `servers` handler, so the Op Mode page's Discord row needs
+   `settings` to have arrived before the first render. The frontend also listens for
+   `change:discordEnabled`, so the order is a belt-and-braces, not the sole guarantee.
+
 ## Testing and linting
 
 ```bash
