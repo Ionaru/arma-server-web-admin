@@ -28,16 +28,23 @@ module.exports = Marionette.ItemView.extend({
 
     initialize: function (options) {
         this.servers = options.servers;
+        this.settings = options.settings;
         this.editing = false;
 
         // Only the things the server dropdown is built from. Listening to a plain 'change' would
         // re-render on every start and stop, since the servers collection carries live state.
         this.listenTo(this.servers, 'add remove change:title', this.refresh);
+
+        // Re-render when Discord config availability changes, but not on unrelated settings churn.
+        if (this.settings) {
+            this.listenTo(this.settings, 'change:discordEnabled', this.refresh);
+        }
     },
 
     events: {
         'click .save': 'save',
         'click .run': 'run',
+        'click .test-discord': 'testDiscord',
         'change form': 'touched'
     },
 
@@ -58,10 +65,12 @@ module.exports = Marionette.ItemView.extend({
 
     templateHelpers: function () {
         var model = this.model;
+        var settings = this.settings;
 
         return {
             dayNames: DAY_NAMES,
             servers: this.servers,
+            discordEnabled: settings ? !!settings.get('discordEnabled') : false,
 
             isDaySelected: function (day) {
                 return (model.get('days') || []).indexOf(day) !== -1 ? 'checked' : '';
@@ -152,5 +161,37 @@ module.exports = Marionette.ItemView.extend({
                     }
                 });
             });
+    },
+
+    testDiscord: function (event) {
+        event.preventDefault();
+
+        var $button = this.$('.test-discord');
+        if ($button.prop('disabled')) {
+            return;
+        }
+
+        $button.prop('disabled', true);
+
+        $.ajax({
+            url: '/api/discord/test',
+            type: 'POST',
+            success: function () {
+                $button.prop('disabled', false);
+                sweetAlert({
+                    title: 'Sent',
+                    text: 'A test message was posted to Discord.',
+                    type: 'success'
+                });
+            },
+            error: function (err) {
+                $button.prop('disabled', false);
+                sweetAlert({
+                    title: 'Error',
+                    text: errorText(err),
+                    type: 'error'
+                });
+            }
+        });
     }
 });

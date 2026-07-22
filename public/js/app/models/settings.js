@@ -3,7 +3,8 @@ var Backbone = require('backbone');
 module.exports = Backbone.Model.extend({
     defaults: {
         path: '',
-        type: ''
+        type: '',
+        discordEnabled: false
     },
     urlRoot: '/api/settings'
 });
