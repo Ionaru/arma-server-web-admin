@@ -132,5 +132,46 @@ describe('Discord', function () {
                 done();
             });
         });
+
+        // The op server title is operator-editable and interpolated unescaped into every message.
+        // Without this, a title like "Ops @everyone" would ping the whole channel on the next run.
+        it('suppresses all mentions so an @everyone in a title cannot ping the channel', function (done) {
+            var discord = new Discord({token: 'abc', channelId: '123'});
+            discord.request = fakeRequest({statusCode: 204});
+
+            discord.send('Restarting **Ops @everyone**', function () {
+                var body = JSON.parse(discord.request.calls[0].body);
+                body.allowed_mentions.should.eql({parse: []});
+                done();
+            });
+        });
+
+        // Every real message is emoji-prefixed (multi-byte). Content-Length must be the byte length,
+        // not the string length, or Discord rejects the truncated body.
+        it('sets Content-Length to the byte length of a multi-byte payload', function (done) {
+            var discord = new Discord({token: 'abc', channelId: '123'});
+            discord.request = fakeRequest({statusCode: 204});
+
+            discord.send('🔄 Restarting', function () {
+                var call = discord.request.calls[0];
+                call.options.headers['Content-Length'].should.eql(Buffer.byteLength(call.body));
+                // The emoji makes the byte length exceed the character length: proves it is not .length.
+                call.options.headers['Content-Length'].should.be.above(call.body.length);
+                done();
+            });
+        });
+
+        it('truncates content over Discord\'s 2000-character limit', function (done) {
+            var discord = new Discord({token: 'abc', channelId: '123'});
+            discord.request = fakeRequest({statusCode: 204});
+
+            var huge = new Array(2500).join('x');   // 2499 chars
+            discord.send(huge, function () {
+                var body = JSON.parse(discord.request.calls[0].body);
+                body.content.length.should.be.belowOrEqual(2000);
+                body.content.should.match(/\.\.\.$/);
+                done();
+            });
+        });
     });
 });
