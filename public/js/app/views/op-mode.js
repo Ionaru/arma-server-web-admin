@@ -5,6 +5,8 @@ var sweetAlert = require('sweet-alert');
 
 var tpl = require('tpl/op-mode.html');
 
+var runDiscordTest = require('./discord-test');
+
 var DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 var errorText = function (err) {
@@ -167,34 +169,40 @@ module.exports = Marionette.ItemView.extend({
     testDiscord: function (event) {
         event.preventDefault();
 
-        if (this.testing) {
-            return;
-        }
-
-        this.testing = true;
-        // Reflect the in-flight state now, and survive a socket-driven re-render: templateHelpers
-        // reads this.testing, so a re-render keeps the button disabled rather than rendering a fresh
-        // enabled one that would allow a second concurrent request.
-        this.$('.test-discord').prop('disabled', true);
-
         var self = this;
 
-        $.ajax({
-            url: '/api/discord/test',
-            type: 'POST',
-            complete: function () {
-                self.testing = false;
-                // Re-query rather than caching a node: a re-render mid-request replaces the button.
-                self.$('.test-discord').prop('disabled', false);
+        runDiscordTest({
+            isBusy: function () {
+                return !!self.testing;
             },
-            success: function () {
+            // this.testing is the source of truth (not the DOM): templateHelpers reads it, so a
+            // socket-driven re-render mid-request keeps the button disabled rather than rendering a
+            // fresh enabled one. Re-query the button rather than caching a node, since a re-render
+            // replaces it.
+            setBusy: function (busy) {
+                self.testing = busy;
+                self.$('.test-discord').prop('disabled', busy);
+            },
+            request: function (cb) {
+                $.ajax({
+                    url: '/api/discord/test',
+                    type: 'POST',
+                    success: function () {
+                        cb(null);
+                    },
+                    error: function (err) {
+                        cb(err);
+                    }
+                });
+            },
+            onSuccess: function () {
                 sweetAlert({
                     title: 'Sent',
                     text: 'A test message was posted to Discord.',
                     type: 'success'
                 });
             },
-            error: function (err) {
+            onError: function (err) {
                 sweetAlert({
                     title: 'Error',
                     text: errorText(err),
