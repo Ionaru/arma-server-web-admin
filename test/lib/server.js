@@ -175,4 +175,133 @@ describe('Server', function () {
             server.restart.bind(server).should.not.throw();
         });
     });
+
+    describe('waitUntilOnline()', function () {
+        it('resolves when a state poll first reports the server up', function (done) {
+            var server = new Server(null, null, {title: 'test'});
+            server.instance = {pid: 1234};
+            server.state = null;
+
+            server.waitUntilOnline(1000, function (err) {
+                (err === null || err === undefined).should.be.true();
+                done();
+            });
+
+            // A poll that still sees nothing must not resolve it.
+            server.emit('state');
+
+            // The next poll reports the server up.
+            server.state = {players: []};
+            server.emit('state');
+        });
+
+        it('does not resolve more than once', function (done) {
+            var server = new Server(null, null, {title: 'test'});
+            server.instance = {pid: 1234};
+            var calls = 0;
+
+            server.waitUntilOnline(1000, function () {
+                calls++;
+            });
+
+            server.state = {players: []};
+            server.emit('state');
+            server.emit('state');
+
+            setTimeout(function () {
+                calls.should.eql(1);
+                done();
+            }, 10);
+        });
+
+        it('fails early when the process exits before coming up', function (done) {
+            var server = new Server(null, null, {title: 'test'});
+            server.instance = {pid: 1234};
+
+            server.waitUntilOnline(1000, function (err) {
+                err.should.be.an.Error();
+                done();
+            });
+
+            // The process died during load: the close handler nulls instance and state, then emits.
+            server.instance = null;
+            server.state = null;
+            server.emit('state');
+        });
+
+        it('fails when the timeout elapses with the server still down', function (done) {
+            var server = new Server(null, null, {title: 'test'});
+            server.instance = {pid: 1234};
+            server.state = null;
+
+            server.waitUntilOnline(20, function (err) {
+                err.should.be.an.Error();
+                done();
+            });
+        });
+
+        // This repo has a history of EventEmitter listener leaks. The single-shot guarantee must
+        // come from removing the listener, not only from the settled flag: assert the count directly.
+        it('removes its state listener once it resolves online', function (done) {
+            var server = new Server(null, null, {title: 'test'});
+            server.instance = {pid: 1234};
+
+            server.listenerCount('state').should.eql(0);
+
+            server.waitUntilOnline(1000, function () {
+                server.listenerCount('state').should.eql(0);
+                done();
+            });
+
+            server.listenerCount('state').should.eql(1);   // armed
+            server.state = {players: []};
+            server.emit('state');
+        });
+
+        it('reports a timeout and an early exit with distinct reasons', function (done) {
+            var timed = new Server(null, null, {title: 'test'});
+            timed.instance = {pid: 1234};
+            timed.state = null;
+
+            timed.waitUntilOnline(20, function (err) {
+                err.reason.should.eql('timeout');
+
+                var exited = new Server(null, null, {title: 'test'});
+                exited.instance = {pid: 1234};
+                exited.waitUntilOnline(1000, function (err2) {
+                    err2.reason.should.eql('offline');
+                    done();
+                });
+                exited.instance = null;
+                exited.state = null;
+                exited.emit('state');
+            });
+        });
+
+        // waitUntilOnline returns a cancel handle so a superseding run can abandon the wait without
+        // firing the callback and without leaking the listener.
+        it('can be cancelled without firing the callback', function (done) {
+            var server = new Server(null, null, {title: 'test'});
+            server.instance = {pid: 1234};
+            server.state = null;
+
+            var called = false;
+            var cancel = server.waitUntilOnline(1000, function () {
+                called = true;
+            });
+
+            server.listenerCount('state').should.eql(1);
+            cancel();
+            server.listenerCount('state').should.eql(0);
+
+            // A later online transition must not resolve a cancelled wait.
+            server.state = {players: []};
+            server.emit('state');
+
+            setTimeout(function () {
+                called.should.be.false();
+                done();
+            }, 10);
+        });
+    });
 });

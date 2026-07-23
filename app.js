@@ -15,6 +15,8 @@ var Mods = require('./lib/mods');
 var Logs = require('./lib/logs');
 var OpMode = require('./lib/op-mode');
 var Settings = require('./lib/settings');
+var Discord = require('./lib/discord');
+var OpModeNotifier = require('./lib/op-mode-notifier');
 
 var app = express();
 var server = require('http').Server(app);
@@ -45,6 +47,16 @@ var settings = new Settings(config);
 
 var opMode = new OpMode(manager);
 
+var discord = new Discord(config.discord);
+
+// Subscribes to op mode's run events and posts to Discord. Kept in a variable so its subscriptions
+// stay referenced for the life of the process. Only onlineTimeoutMinutes is read here; the token
+// and channel id belong to the Discord client above.
+var opModeNotifier = new OpModeNotifier(opMode, discord, {
+    onlineTimeoutMinutes: config.discord && config.discord.onlineTimeoutMinutes
+});
+
+app.use('/api/discord', require('./routes/discord')(discord));
 app.use('/api/logs', require('./routes/logs')(logs));
 app.use('/api/missions', require('./routes/missions')(missions));
 app.use('/api/mods', require('./routes/mods')(mods));
@@ -56,8 +68,10 @@ io.on('connection', function (socket) {
     socket.emit('missions', missions.missions);
     socket.emit('mods', mods.mods);
     socket.emit('op-mode', opMode.getState());
-    socket.emit('servers', manager.getServers());
+    // Emit settings before servers: router.js starts Backbone.history from inside the servers
+    // handler, so the Op Mode page's Discord row needs settings to have arrived by first render.
     socket.emit('settings', settings.getPublicSettings());
+    socket.emit('servers', manager.getServers());
 });
 
 missions.on('missions', function (missions) {

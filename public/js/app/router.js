@@ -83,7 +83,7 @@ module.exports = Backbone.Router.extend({
     },
 
     opMode: function () {
-        layoutView.content.show(new OpModeView({model: opMode, servers: servers}));
+        layoutView.content.show(new OpModeView({model: opMode, servers: servers, settings: settings}));
     },
 
     server: function (id) {

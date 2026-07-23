@@ -107,6 +107,59 @@ armed. This should only happen if the file was hand-edited or the disk had a pro
 The banner shows the underlying reason. Filling in the form and pressing **Save** replaces the
 unreadable file with what is on screen.
 
+## Discord notifications
+
+If you give the panel a Discord bot token and a channel id, it posts to that channel when op mode
+runs:
+
+- When a run starts: **Restarting <op server> for the operation.**
+- When the op server is back online and joinable: **<op server> is back online (took Xm Ys).** The
+  time is measured from the restart message, so it includes the few seconds spent stopping the
+  other servers. "Joinable" means the panel's own status query answered, not just that the process
+  started, so this is the point where people can actually log in.
+- If the op server started but dropped out again before it finished loading (a bad modset or
+  mission, for example): **<op server> started but went offline again before coming online.**
+- If it simply never answers within the timeout (15 minutes by default, see below): **<op server>
+  has not come back online after 15 minutes.**
+- If the restart fails outright (for example the op server would not stop in time): **<op server>
+  failed to restart: ...**
+
+Exactly one of the last three (online, gave up, or failed) is posted per run. Both the scheduled run
+and **Run now** post these messages.
+
+### Turning it on
+
+Add a `discord` block to `config.js` with a bot token and the target channel's id, then restart the
+panel:
+
+    discord: {
+      token: 'your-bot-token',
+      channelId: '123456789012345678',
+      onlineTimeoutMinutes: 15,
+    },
+
+The bot must be a member of the server and have permission to send messages in that channel. It does
+not need to appear online; it will show as offline in the member list, which is normal for a
+notify-only bot.
+
+`onlineTimeoutMinutes` is how long the panel waits for the op server to come back before it posts the
+"has not come back online" warning. It is optional and defaults to 15 minutes; the warning always
+names whatever value is in force. Set it higher for a heavy modset that takes longer to load. If you
+leave it out, or set it to something that is not a positive number, it falls back to 15.
+
+Leave the token or channel id blank to turn notifications off.
+
+### The Discord row on the Op Mode page
+
+The page shows whether notifications are configured. When they are, a **Send test message** button
+posts a real message to the channel so you can confirm the token, channel id and permissions are
+right. If the token is wrong, the channel id is wrong, or the bot lacks permission, the test tells
+you straight away rather than you finding out on op night. "Configured" on its own only means the
+two fields are filled in; the test button is what proves it actually works.
+
+Changing the token or channel means editing `config.js` and restarting the panel, the same as the
+rest of that file.
+
 ## Where the settings live
 
 `op-mode.json`, next to `servers.json` in the panel's working directory. You should not need to edit

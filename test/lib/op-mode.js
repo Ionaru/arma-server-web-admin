@@ -273,6 +273,101 @@ describe('OpMode', function () {
                 done();
             });
         });
+
+        it('emits run-started with the op server before stopping anything', function (done) {
+            var op = fakeServer('op', true);
+            var other = fakeServer('other', true);
+            var opMode = opModeWith([op, other]);
+
+            var startedWith = null;
+            opMode.on('run-started', function (server) {
+                startedWith = server;
+                // Nothing has been stopped yet at the moment run-started fires.
+                other.stops.should.eql(0);
+                op.restarts.should.eql(0);
+            });
+
+            opMode.run(function () {
+                startedWith.should.equal(op);
+                done();
+            });
+        });
+
+        it('emits run-restarted with the op server after a successful restart', function (done) {
+            var op = fakeServer('op', true);
+            var other = fakeServer('other', true);
+            var opMode = opModeWith([op, other]);
+
+            var restartedWith = null;
+            opMode.on('run-restarted', function (server) {
+                restartedWith = server;
+                // The op server has been restarted by the time run-restarted fires.
+                op.restarts.should.eql(1);
+            });
+
+            opMode.run(function (err) {
+                (err === undefined || err === null).should.be.true();
+                restartedWith.should.equal(op);
+                done();
+            });
+        });
+
+        it('does not emit run-restarted when the restart fails', function (done) {
+            var op = fakeServer('op', true);
+            op.restart = function (cb) {
+                cb(new Error('did not stop in time'));
+            };
+            var opMode = opModeWith([op]);
+
+            var restarted = false;
+            opMode.on('run-restarted', function () {
+                restarted = true;
+            });
+
+            opMode.run(function (err) {
+                err.should.be.an.Error();
+                restarted.should.be.false();
+                done();
+            });
+        });
+
+        it('emits run-failed with the op server and error when the restart fails', function (done) {
+            var op = fakeServer('op', true);
+            op.restart = function (cb) {
+                cb(new Error('did not stop in time'));
+            };
+            var opMode = opModeWith([op]);
+
+            var failedWith = null;
+            opMode.on('run-failed', function (server, err) {
+                failedWith = {server: server, err: err};
+            });
+
+            opMode.run(function (err) {
+                err.should.be.an.Error();
+                failedWith.server.should.equal(op);
+                failedWith.err.message.should.eql('did not stop in time');
+                done();
+            });
+        });
+
+        it('does not emit run-started when a guard refuses the run', function (done) {
+            var other = fakeServer('other', true);
+            // opServerId 'op' but no such server in the manager: run() refuses before touching anything.
+            var opMode = opModeWith([other]);
+
+            var started = false;
+            opMode.on('run-started', function () {
+                started = true;
+            });
+
+            opMode.run(function (err) {
+                err.should.be.an.Error();
+                started.should.be.false();
+                other.stops.should.eql(0);
+                done();
+            });
+        });
     });
 
     describe('tick()', function () {
