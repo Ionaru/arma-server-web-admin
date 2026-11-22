@@ -14,14 +14,14 @@ The project is old and deliberately not modernised. Expect ES5-style `var` and p
 
 | Piece | What it is |
 |---|---|
-| Runtime | Node. Production runs Node 26. `.travis.yml` still targets Node 12, and there is no `engines` field. |
+| Runtime | Node. Production runs Node 26. `engines` in `package.json` is `^20.19.0 || ^22.13.0 || >=24` (the eslint 10 and mocha 12 floor). CI runs Node 26 on GitHub Actions (`.github/workflows/ci.yml`). |
 | Package manager | pnpm 12 (needs Node >= 18), pinned by `packageManager` in `package.json`; see *Dependencies: pnpm* |
 | Server | Express 4, socket.io 1 |
 | Frontend | Backbone 1.3.3 + Marionette 2.4.7, Bootstrap 3, jQuery 3 |
 | Bundling | webpack 1, compiled **in memory** by `webpack-dev-middleware` (`app.js`) |
 | Process launcher | the `arma-server` package (0.0.7) actually spawns the game |
 | Status polling | `gamedig`, every 5s per running server |
-| Tests | mocha 3, `should`, `supertest`, `timekeeper`; a Playwright smoke run of the real UI (`smoke/`) |
+| Tests | mocha 12, `should`, supertest 7, timekeeper 2; a Playwright smoke run of the real UI (`smoke/`) |
 
 **There is no build step.** `pnpm start` is the whole story; webpack compiles the bundle on request.
 
@@ -292,8 +292,13 @@ Three traps:
 ## Testing and linting
 
 ```bash
-pnpm test    # mocha --recursive
+pnpm test    # plain mocha, configured by .mocharc.yml
 ```
+
+`.mocharc.yml` sets `recursive: true` (the spec defaults to `./test`) and `exit: true`. Mocha 4+ no
+longer force-exits, and the app and its tests leave handles open, so without `exit` the process
+lingers after the summary. Measured with `mocha --no-exit` it still ended by itself a few seconds
+later, but `exit: true` stays so a leaked handle can never hang a run or CI.
 
 `pnpm test` requires `app.js`, so it needs a `config.js` whose `path` exists: with `config.js.example`
 copied unchanged, `mods.updateMods()` throws on the missing folder before any test runs. Point `path`
@@ -331,13 +336,19 @@ Time-dependent tests use `timekeeper` (`tk.freeze` / `tk.reset`); see `test/lib/
 mode tests pin `process.env.TZ = 'Europe/Amsterdam'` so the DST cases mean the same thing on any
 developer's machine.
 
-`pnpm run lint` is `eslint */**/*.js webpack.config.js config.js.example`. **This is broken:** bash
-expands `*/**/*.js` to include several hundred files under `node_modules`, and eslint then chokes on
-a nested `.eslintrc` in a dependency (`supertest`). Lint the project directly instead:
+`pnpm run lint` is `eslint .`, using the flat config in `eslint.config.js` (eslint 10,
+`@eslint/js` recommended plus `no-unused-vars: off` and `semi: always`). Three blocks: Node files
+(`lib`, `routes`, `scripts`, `smoke`, the root scripts and `config.js.example`, which has no `.js`
+extension and is matched by name), `test/` (adds the mocha globals), and `public/js` (`ecmaVersion`
+2015 because webpack 1 bundles it, browser globals plus the `ProvidePlugin` globals `_`, `$`,
+`Backbone` and `jQuery`). `no-undef` is on everywhere, so a stray global fails the lint.
 
-```bash
-pnpm exec eslint app.js webpack.config.js config.js.example lib routes public/js test smoke scripts
-```
+### CI
+
+`.github/workflows/ci.yml` runs on pushes to `master` and on pull requests, on Node 26: `pnpm install
+--frozen-lockfile`, `pnpm run lint`, `pnpm test` and `pnpm run check-bundle`. It writes its own
+`config.js` from `config.js.example` with `path` pointed at an empty folder, since an unchanged copy
+crashes the tests (see above). The smoke run is not part of CI.
 
 ## Relationship to upstream
 

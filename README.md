@@ -1,6 +1,6 @@
 # Arma Server Admin
 
-[![Build Status](https://travis-ci.org/Dahlgren/arma-server-web-admin.svg?branch=master)](https://travis-ci.org/Dahlgren/arma-server-web-admin)
+[![CI](https://github.com/Ionaru/arma-server-web-admin/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/Ionaru/arma-server-web-admin/actions/workflows/ci.yml)
 
 A simple to use web admin panel for Arma servers.
 
@@ -18,7 +18,7 @@ A simple to use web admin panel for Arma servers.
 
 ## Requirements
 
-- Node.js 18 or newer (pnpm 12 needs it), https://nodejs.org/
+- Node.js 20.19 or newer, 22.13 or newer, or 24 and up (the 21 and 23 lines are not supported). The panel runs on Node 26 in production. https://nodejs.org/
 - Pre-installed Arma Server
 
 ## Supported Platforms
@@ -66,7 +66,7 @@ discord | Optional `{ token, channelId, onlineTimeoutMinutes }`. When token and 
 
    Switching an existing install from npm to pnpm (do this outside an operation: stopping the panel
    can also stop the game servers it started):
-   1. Check `node --version` is 18 or newer.
+   1. Check `node --version` is within the supported range listed under Requirements.
    2. Stop the panel, or its Windows Service.
    3. Delete the `node_modules` folder. pnpm does not remove the packages npm left there.
    4. Run `pnpm install`.

@@ -5,12 +5,15 @@
   "license": "MIT",
   "private": true,
   "packageManager": "pnpm@12.21.0+sha512.66fd8278ee28935ce951792d34367ff3af5c432a2756445823029533835b8da529bbe0be5130afd56ed0713fb8789e47bad82d93bd5ae2fe54b15562d6276ef0",
+  "engines": {
+    "node": "^20.19.0 || ^22.13.0 || >=24"
+  },
   "scripts": {
     "install-windows-service": "winser -i -a -c",
     "uninstall-windows-service": "winser -r -x -c",
-    "lint": "eslint */**/*.js webpack.config.js config.js.example",
+    "lint": "eslint .",
     "start": "node app.js",
-    "test": "node node_modules/mocha/bin/mocha --recursive",
+    "test": "mocha",
     "smoke": "node smoke/run.js",
     "check-bundle": "node scripts/check-bundle.js"
   },
@@ -50,11 +53,13 @@
     "winser": "^1.0.2"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.65.1",
-    "eslint": "^6.8.0",
-    "mocha": "~3.2.0",
-    "should": "~13.0.1",
-    "supertest": "^2.0.1",
-    "timekeeper": "0.0.5"
+    "eslint": "^10.15.0",
+    "globals": "^17.14.0",
+    "mocha": "^12.0.3",
+    "should": "^13.2.3",
+    "supertest": "^7.3.2",
+    "timekeeper": "^2.3.1"
   }
 }
