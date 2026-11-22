@@ -134,11 +134,44 @@ assignments can appear before or after it.
 
 Driven by `config.type` (`linux` / `windows` / `wine`), passed to `arma-server` as `platform`.
 
-- **Log capture only happens on Linux** (`lib/server.js`): stdout/stderr are piped to a file. On
-  Windows the game writes its own logs, so nothing is captured.
-- `Logs.logsPath()` differs per platform (`lib/logs.js`).
+- **Log capture only happens on Linux** (`lib/server.js`): stdout/stderr of the server and of each
+  headless client are piped to `<path>/logs/arma3server_<time>.log` and `..._HC_<n>.log`. The Linux
+  game writes no `.rpt` and ignores `-profiles`. On Windows the game writes its own `.rpt`, so
+  nothing is captured.
+- `Logs.logsPath()` (the default log folder) differs per platform (`lib/logs.js`). It is only one of
+  the folders the log view lists; see *Logs and headless clients*.
 - Per the README, Windows Error Reporting must be disabled, or server control gets stuck on a crash
   because the dead process never exits.
+
+## Logs and headless clients
+
+Arma names its `.rpt` `<exe>_<date>_<time to the second>.rpt` in the `-profiles` folder (default
+`%LOCALAPPDATA%\Arma 3`). A server and its headless clients run the same exe, so two of them started
+in the same second with the same profiles folder write the same file and one log is lost. That
+happened in production: the dedicated server's log was gone and only a headless client's survived.
+
+- **Headless clients start staggered** (`Server.headlessClientStartDelay`, 5 s after the server, then
+  `Server.headlessClientStartInterval`, 2 s apart). Pending starts are timers that
+  `stopHeadlessClients()` cancels when the server process closes; do not go back to spawning them
+  in the `start()` loop.
+- **Each headless client gets its own profiles folder.** `getHeadlessClientParameters(i)` strips any
+  inherited `-profiles=` and adds `-profiles=<server profiles>\HC_<i>`, which also stops the shared
+  `DataCache` lock wait. Without a server `-profiles` the parameters pass through and only the stagger
+  protects the log. `-name` is deliberately left alone (it is the in-game identity).
+- **`lib/profiles.js` is string-only on purpose.** It parses Windows paths on a Linux host (tests,
+  wine), so it must not use `path`. The last `-profiles=` wins, names match case-insensitively, and
+  quotes are stripped.
+- **The log view lists several folders** (`Logs.prototype.logDirectories`): each server's profiles
+  folder plus its `HC_<n>` subfolders, and the default folder when a server has no `-profiles`
+  (always on Linux). Relative `-profiles` paths resolve against `config.path`, as Arma resolves them
+  from its install folder.
+- **Profile folders only show `.rpt`, `.log`, `.mdmp` and `.bidmp`.** Operators keep config files
+  (with passwords) in them, and the log view can download and delete. Do not widen the filter.
+- **Logs are addressed by `id`** (a hash of the path plus the name), never by bare name, because two
+  folders can hold the same name. `getLogFile` only resolves ids from the current listing, which is
+  also what stops path traversal; keep every read, download and delete going through it.
+- The Source column's role comes from the `HC_<n>` folder, else the `-client` argument in an `.rpt`
+  header, else the `_HC_<n>.log` suffix of a Linux capture.
 
 ## Op mode
 
