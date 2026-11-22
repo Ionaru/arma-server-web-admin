@@ -30,7 +30,7 @@ module.exports = Marionette.ItemView.extend({
             encodedId: encodeURIComponent(this.model.id),
             roleClass: roleClass,
             roleLabel: roleLabel,
-            serverTitles: (this.model.get('servers') || []).join(', ')
+            serverTitles: this.model.get('servers').join(', ')
         };
     },
 
