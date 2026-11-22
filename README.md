@@ -18,7 +18,7 @@ A simple to use web admin panel for Arma servers.
 
 ## Requirements
 
-- Node.js, https://nodejs.org/
+- Node.js 18 or newer (pnpm 12 needs it), https://nodejs.org/
 - Pre-installed Arma Server
 
 ## Supported Platforms
@@ -61,9 +61,21 @@ discord | Optional `{ token, channelId, onlineTimeoutMinutes }`. When token and 
 
 2. Change values in `config.js` as described above or in the file
 
-3. Install all dependencies with `npm install`
+3. Install [pnpm](https://pnpm.io/installation) once with `npm install -g pnpm`, then install all
+   dependencies with `pnpm install`
 
-4. Launch the web UI with `npm start` or install as a Windows Service with `npm run install-windows-service`
+   Switching an existing install from npm to pnpm (do this outside an operation: stopping the panel
+   can also stop the game servers it started):
+   1. Check `node --version` is 18 or newer.
+   2. Stop the panel, or its Windows Service.
+   3. Delete the `node_modules` folder. pnpm does not remove the packages npm left there.
+   4. Run `pnpm install`.
+   5. Start the panel again, or start the existing Windows Service (for example
+      `net start arma-server-web-admin`). Don't run `install-windows-service` again: the service is
+      already registered, so the command fails. The existing service keeps working because
+      `pnpm install` recreates `node_modules\winser`.
+
+4. Launch the web UI with `pnpm start` or install as a Windows Service with `pnpm run install-windows-service`
 
 ## Logs and headless clients
 
@@ -89,9 +101,9 @@ profile folder write the same log file, and one of the logs is lost. To keep the
 
 Make sure to disable Windows Error Reporting or server control will be stuck on a server crash.
 
-Install as a Windows Service with `npm run install-windows-service`.
+Install as a Windows Service with `pnpm run install-windows-service`.
 
-Remove previously installed Windows Service with `npm run uninstall-windows-service`.
+Remove previously installed Windows Service with `pnpm run uninstall-windows-service`.
 
 ### Wine
 

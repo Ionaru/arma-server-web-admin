@@ -1,0 +1,5 @@
+# pnpm settings for this single-package repo (pnpm 11+ reads them only from this file).
+allowBuilds:
+  # macOS-only optional watcher pulled in by webpack 1 (watchpack > chokidar 1).
+  # Its native build is not needed: chokidar falls back to fs.watch.
+  fsevents: false

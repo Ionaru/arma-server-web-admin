@@ -14,7 +14,8 @@ The project is old and deliberately not modernised. Expect ES5-style `var` and p
 
 | Piece | What it is |
 |---|---|
-| Runtime | Node. `.travis.yml` targets Node 12; there is no `engines` field. It runs fine on modern Node. |
+| Runtime | Node. Production runs Node 26. `.travis.yml` still targets Node 12, and there is no `engines` field. |
+| Package manager | pnpm 12 (needs Node >= 18), pinned by `packageManager` in `package.json`; see *Dependencies: pnpm* |
 | Server | Express 4, socket.io 1 |
 | Frontend | Backbone 1.3.3 + Marionette 2.4.7, Bootstrap 3, jQuery 3 |
 | Bundling | webpack 1, compiled **in memory** by `webpack-dev-middleware` (`app.js`) |
@@ -22,17 +23,52 @@ The project is old and deliberately not modernised. Expect ES5-style `var` and p
 | Status polling | `gamedig`, every 5s per running server |
 | Tests | mocha 3, `should`, `supertest`, `timekeeper`; a Playwright smoke run of the real UI (`smoke/`) |
 
-**There is no build step.** `npm start` is the whole story; webpack compiles the bundle on request.
+**There is no build step.** `pnpm start` is the whole story; webpack compiles the bundle on request.
 
 Getting a fresh clone running:
 
 ```bash
-npm install
+npm install -g pnpm                # once per machine
+pnpm install
 cp config.js.example config.js     # then point `path` at an Arma install
-npm start                          # http://localhost:3000
+pnpm start                         # http://localhost:3000
 ```
 
 `config.js`, `servers.json` and `op-mode.json` are all gitignored, so a fresh clone has none of them.
+
+## Dependencies: pnpm
+
+The lockfile is `pnpm-lock.yaml`. There is no `package-lock.json`: `npm install` would ignore the
+lock, resolve afresh and write one, so don't use npm for installs.
+
+- **The pnpm pin carries a hash.** `packageManager` is `pnpm@<version>+sha512.<hash>`, and Corepack
+  refuses a download that doesn't match it. Change it with `corepack use pnpm@<version>`, not by
+  editing the version: Corepack ships with Node 24 and older; on Node 25+ install it first with
+  `npm install -g corepack`.
+- **Settings live in `pnpm-workspace.yaml`.** pnpm 11+ ignores the `pnpm` field of `package.json`
+  and reads only auth and registry settings from `.npmrc`. The file has no `packages:` field; the
+  repo is a single package.
+- **Dependency install scripts are blocked.** pnpm 12 fails the install on any dependency with an
+  install script that `allowBuilds` doesn't list. The only one is `fsevents` (macOS only, from
+  webpack 1's watcher), set to `false`: chokidar falls back to `fs.watch` without it.
+- **The layout is strict.** A package can only require what it declares. Every bare `require()` in
+  `app.js`, `lib`, `routes`, `public/js`, `test`, `smoke` and `scripts` is declared in
+  `package.json`; keep it that way. The `json-loader` rule in `webpack.config.js` names a loader
+  that isn't installed (it wasn't under npm either); it is harmless only because nothing in the
+  bundle requires a `.json` file.
+- **webpack 1 follows pnpm's symlinks** to their real paths under `node_modules/.pnpm`, so the
+  bundle holds one copy each of jQuery and Backbone. Marionette 2.4.7 still gets its own underscore
+  1.8.3, as it did under npm.
+- **Fresh releases wait a day.** pnpm 12's `minimumReleaseAge` defaults to 1440 minutes, so a
+  version published in the last 24 hours may not be picked.
+- **Switching an existing npm install** (the production box): stop the service and delete
+  `node_modules` first. pnpm installs over an npm-made `node_modules` without complaint but leaves
+  npm's hoisted packages in place. The README lists the steps.
+- **A Windows service installed under pnpm points into the virtual store.** pnpm's bin shim runs
+  winser from its real path and winser locates `nssm64.exe` from `__dirname`, so the service binary
+  is `node_modules\.pnpm\winser@1.0.3\node_modules\winser\bin\nssm64.exe`. Changing winser's version
+  removes that folder: uninstall and reinstall the service afterwards. A service installed under npm
+  points at `node_modules\winser\bin`, which pnpm recreates as a junction.
 
 ## Boot sequence
 
@@ -256,10 +292,10 @@ Three traps:
 ## Testing and linting
 
 ```bash
-npm test     # mocha --recursive
+pnpm test    # mocha --recursive
 ```
 
-`npm test` requires `app.js`, so it needs a `config.js` whose `path` exists: with `config.js.example`
+`pnpm test` requires `app.js`, so it needs a `config.js` whose `path` exists: with `config.js.example`
 copied unchanged, `mods.updateMods()` throws on the missing folder before any test runs. Point `path`
 at any empty folder.
 
@@ -269,11 +305,11 @@ There are no frontend unit tests. Before and after any change that touches the f
 or the transport, run:
 
 ```bash
-npm run check-bundle   # one webpack compile into a temp dir; exits 1 on a compile error
-npm run smoke          # starts the real app and clicks through every page in headless Chromium
+pnpm run check-bundle  # one webpack compile into a temp dir; exits 1 on a compile error
+pnpm run smoke         # starts the real app and clicks through every page in headless Chromium
 ```
 
-- First time only: `npx playwright install --only-shell chromium`.
+- First time only: `pnpm exec playwright install --only-shell chromium`.
 - `smoke/run.js` builds a throwaway environment under the OS temp dir (a fake Arma folder with one
   mission, one mod and one log, `servers.json` with one server that has `auto_start: false`, and op
   mode disabled), starts `app.js` there on a free port, and visits the dashboard, every server tab,
@@ -295,13 +331,12 @@ Time-dependent tests use `timekeeper` (`tk.freeze` / `tk.reset`); see `test/lib/
 mode tests pin `process.env.TZ = 'Europe/Amsterdam'` so the DST cases mean the same thing on any
 developer's machine.
 
-`npm run lint` is `eslint */**/*.js webpack.config.js config.js.example`. **This is broken with
-modern shells and npm:** bash expands `*/**/*.js` to include roughly 1250 files under
-`node_modules`, and eslint then chokes on a nested `.eslintrc` in a dependency. Lint the project
-directly instead:
+`pnpm run lint` is `eslint */**/*.js webpack.config.js config.js.example`. **This is broken:** bash
+expands `*/**/*.js` to include several hundred files under `node_modules`, and eslint then chokes on
+a nested `.eslintrc` in a dependency (`supertest`). Lint the project directly instead:
 
 ```bash
-npx eslint app.js webpack.config.js config.js.example lib routes public/js test smoke scripts
+pnpm exec eslint app.js webpack.config.js config.js.example lib routes public/js test smoke scripts
 ```
 
 ## Relationship to upstream
