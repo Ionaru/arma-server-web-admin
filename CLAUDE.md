@@ -351,6 +351,11 @@ install is frozen); then it runs `pnpm run lint`, `pnpm test` and `pnpm run chec
 `config.js` from `config.js.example` with `path` pointed at an empty folder, since an unchanged copy
 crashes the tests (see above). The smoke run is not part of CI.
 
+Actions are pinned to a full commit SHA with the release tag in a trailing comment
+(`uses: owner/action@<40-hex sha> # vX.Y.Z`), as GitHub recommends: a tag can be moved, a SHA
+cannot. To bump one, resolve the new tag's commit (`git ls-remote https://github.com/<owner>/<action>
+'refs/tags/vX.Y.Z^{}'`, or `refs/tags/vX.Y.Z` for a lightweight tag) and update both.
+
 ## Relationship to upstream
 
 77 commits behind `Dahlgren/arma-server-web-admin` (upstream's last commit is 2025-07-12) and
