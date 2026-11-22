@@ -20,11 +20,19 @@ describe('Logs', function () {
         it('should generate valid file name', function () {
             Logs.generateLogFileName().should.eql('arma3server_2015-10-21_19-28-32.log');
         });
+
+        it('should append a suffix before the extension (B4)', function () {
+            Logs.generateLogFileName('HC_0').should.eql('arma3server_2015-10-21_19-28-32_HC_0.log');
+        });
     });
 
     describe('generateLogFilePath()', function () {
         it('should generate valid file path', function () {
             logs.generateLogFilePath().should.eql('/tmp/logs/arma3server_2015-10-21_19-28-32.log');
+        });
+
+        it('should pass the suffix through (B5)', function () {
+            logs.generateLogFilePath('HC_2').should.eql('/tmp/logs/arma3server_2015-10-21_19-28-32_HC_2.log');
         });
     });
 });
