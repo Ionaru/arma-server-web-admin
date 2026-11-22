@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # Installs pnpm (version from packageManager) and Node 26, then runs
+      # pnpm install --frozen-lockfile (require-lockfile).
+      - uses: pnpm/setup@731dfb6463bbd11c11fd0ee11fe00ed0e36d48a1 # v3.2.0
+        with:
+          runtime: node@26
+          cache: true
+          require-lockfile: true
+      # The tests require app.js, which needs a config.js whose path exists.
+      - name: Create config.js
+        run: |
+          mkdir -p "$RUNNER_TEMP/arma"
+          sed "s#path-to-arma3-directory#$RUNNER_TEMP/arma#" config.js.example > config.js
+      - run: pnpm run lint
+      - run: pnpm test
+      - run: pnpm run check-bundle

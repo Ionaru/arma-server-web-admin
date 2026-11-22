@@ -5,6 +5,7 @@
 //   node smoke/run.js
 //
 // Environment: SMOKE_SCREENSHOTS=<dir> saves PNGs, SMOKE_KEEP=1 keeps the temp directory.
+/* global window, document, getComputedStyle -- used inside page.evaluate callbacks, which run in the browser */
 var childProcess = require('child_process');
 var fs = require('fs');
 var http = require('http');
@@ -288,7 +289,7 @@ var clickNav = async function (page, selector, hash) {
         }, hash, {timeout: WAIT_TIMEOUT});
     } catch (err) {
         var actual = await page.evaluate(function () { return window.location.hash; });
-        throw new Error('clicking ' + selector + ' did not navigate to ' + hash + ' (hash is "' + actual + '")');
+        throw new Error('clicking ' + selector + ' did not navigate to ' + hash + ' (hash is "' + actual + '")', {cause: err});
     }
 };
 

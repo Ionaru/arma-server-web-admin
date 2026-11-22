@@ -1,0 +1,4 @@
+recursive: true
+# Mocha 4+ no longer force-exits. test/app.js starts an http server and socket.io; the run
+# currently ends by itself (about 3 s later), so this is a guard against a future leaked handle.
+exit: true
