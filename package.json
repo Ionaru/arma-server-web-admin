@@ -9,7 +9,9 @@
     "uninstall-windows-service": "winser -r -x -c",
     "lint": "eslint */**/*.js webpack.config.js config.js.example",
     "start": "node app.js",
-    "test": "node node_modules/mocha/bin/mocha --recursive"
+    "test": "node node_modules/mocha/bin/mocha --recursive",
+    "smoke": "node smoke/run.js",
+    "check-bundle": "node scripts/check-bundle.js"
   },
   "standard": {
     "env": [
@@ -52,6 +54,7 @@
     "winser": "^1.0.2"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.1",
     "eslint": "^6.8.0",
     "mocha": "~3.2.0",
     "should": "~13.0.1",
