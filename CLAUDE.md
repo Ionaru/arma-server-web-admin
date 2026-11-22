@@ -41,6 +41,10 @@ pnpm start                         # http://localhost:3000
 The lockfile is `pnpm-lock.yaml`. There is no `package-lock.json`: `npm install` would ignore the
 lock, resolve afresh and write one, so don't use npm for installs.
 
+- **The pnpm pin carries a hash.** `packageManager` is `pnpm@<version>+sha512.<hash>`, and Corepack
+  refuses a download that doesn't match it. Change it with `corepack use pnpm@<version>`, not by
+  editing the version: Corepack ships with Node 24 and older; on Node 25+ install it first with
+  `npm install -g corepack`.
 - **Settings live in `pnpm-workspace.yaml`.** pnpm 11+ ignores the `pnpm` field of `package.json`
   and reads only auth and registry settings from `.npmrc`. The file has no `packages:` field; the
   repo is a single package.
