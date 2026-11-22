@@ -37,6 +37,7 @@ app.use(serveStatic(path.join(__dirname, 'public')));
 var logs = new Logs(config);
 
 var manager = new Manager(config, logs);
+logs.setServers(function () { return manager.getServers(); });
 manager.load();
 
 var missions = new Missions(config);

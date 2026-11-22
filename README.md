@@ -48,7 +48,7 @@ port | Web port to use
 host | IP or Hostname to listen on
 type | Which kind of server to use, can be 'linux', 'windows' or 'wine'
 additionalConfigurationOptions | Additional configuration options appended to server.cfg file
-parameters | Extra startup parameters added to servers and headless clients
+parameters | Extra startup parameters added to servers and headless clients (a `-profiles` folder is given a subfolder per headless client, see [Logs and headless clients](#logs-and-headless-clients))
 serverMods | Mods that always and only will be used by the game servers
 auth | If both username and password is set, HTTP Basic Auth will be used
 prefix | Text prepended to all game servers name
@@ -64,6 +64,24 @@ discord | Optional `{ token, channelId, onlineTimeoutMinutes }`. When token and 
 3. Install all dependencies with `npm install`
 
 4. Launch the web UI with `npm start` or install as a Windows Service with `npm run install-windows-service`
+
+## Logs and headless clients
+
+Arma names its `.rpt` log after the executable and its start time, to the second. A server and its
+headless clients run the same executable, so two of them started in the same second in the same
+profile folder write the same log file, and one of the logs is lost. To keep them apart:
+
+- Headless clients start 5 seconds after their server, and 2 seconds apart from each other.
+- When a server's parameters include `-profiles=<folder>`, each headless client is started with
+  `-profiles=<folder>\HC_<n>` instead, so its log, cache and profile files stay out of the server's
+  folder.
+- The Logs page lists each server's `-profiles` folder (`.rpt`, `.log`, `.mdmp` and `.bidmp` files
+  only) and its `HC_<n>` subfolders, plus the default log folder for servers without `-profiles`.
+  The Source column shows which server each file belongs to and whether it is the server's log or a
+  headless client's.
+- On Linux, each headless client's output is also saved in the logs folder as
+  `arma3server_<time>_<server id>_HC_<n>.log`, next to the server's own
+  `arma3server_<time>_<server id>.log`.
 
 ## System Configuration
 
