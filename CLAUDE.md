@@ -20,7 +20,7 @@ The project is old and deliberately not modernised. Expect ES5-style `var` and p
 | Bundling | webpack 1, compiled **in memory** by `webpack-dev-middleware` (`app.js`) |
 | Process launcher | the `arma-server` package (0.0.7) actually spawns the game |
 | Status polling | `gamedig`, every 5s per running server |
-| Tests | mocha 3, `should`, `supertest`, `timekeeper` |
+| Tests | mocha 3, `should`, `supertest`, `timekeeper`; a Playwright smoke run of the real UI (`smoke/`) |
 
 **There is no build step.** `npm start` is the whole story; webpack compiles the bundle on request.
 
@@ -259,6 +259,38 @@ Three traps:
 npm test     # mocha --recursive
 ```
 
+`npm test` requires `app.js`, so it needs a `config.js` whose `path` exists: with `config.js.example`
+copied unchanged, `mods.updateMods()` throws on the missing folder before any test runs. Point `path`
+at any empty folder.
+
+### Smoke run and bundle check
+
+There are no frontend unit tests. Before and after any change that touches the frontend, the bundle
+or the transport, run:
+
+```bash
+npm run check-bundle   # one webpack compile into a temp dir; exits 1 on a compile error
+npm run smoke          # starts the real app and clicks through every page in headless Chromium
+```
+
+- First time only: `npx playwright install --only-shell chromium`.
+- `smoke/run.js` builds a throwaway environment under the OS temp dir (a fake Arma folder with one
+  mission, one mod and one log, `servers.json` with one server that has `auto_start: false`, and op
+  mode disabled), starts `app.js` there on a free port, and visits the dashboard, every server tab,
+  missions, mods, logs and op mode, plus the Add server and Settings modals and the op mode Run now
+  confirm (cancelled, never confirmed).
+- It fails on any console error, page error, app response >= 400 or failed script, stylesheet or
+  font load, and on a missing DOM marker, including the Glyphicons font actually loading. There is
+  no allowlist on purpose: fix the cause instead of filtering the message.
+- The config cannot be swapped by changing the working directory: `app.js` and `lib/server.js`
+  resolve `config.js` against the repo. `smoke/config-shim.js` (loaded with `node --require`)
+  redirects both requires to the temp config, so a developer's real `config.js` is never read or
+  touched.
+- `SMOKE_SCREENSHOTS=<dir>` saves a PNG per page, tab and dialog at desktop width and per page at
+  375 px, for before/after comparison. `SMOKE_KEEP=1` keeps the temp folder; it is always kept, and
+  its path printed, when the run fails.
+- `smoke/` is outside `test/` so mocha does not pick it up.
+
 Time-dependent tests use `timekeeper` (`tk.freeze` / `tk.reset`); see `test/lib/logs.js`. The op
 mode tests pin `process.env.TZ = 'Europe/Amsterdam'` so the DST cases mean the same thing on any
 developer's machine.
@@ -269,7 +301,7 @@ modern shells and npm:** bash expands `*/**/*.js` to include roughly 1250 files 
 directly instead:
 
 ```bash
-npx eslint app.js webpack.config.js config.js.example lib routes public/js test
+npx eslint app.js webpack.config.js config.js.example lib routes public/js test smoke scripts
 ```
 
 ## Relationship to upstream
