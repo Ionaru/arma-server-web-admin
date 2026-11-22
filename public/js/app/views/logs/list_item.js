@@ -14,6 +14,26 @@ module.exports = Marionette.ItemView.extend({
         'click .destroy': 'deleteLog'
     },
 
+    templateHelpers: function () {
+        var role = this.model.get('role');
+        var roleLabel = role;
+        var roleClass = 'label-info';
+
+        if (role === 'server') {
+            roleLabel = 'Server';
+            roleClass = 'label-primary';
+        } else if (role === 'HC') {
+            roleLabel = 'Headless client';
+        }
+
+        return {
+            encodedId: encodeURIComponent(this.model.id),
+            roleClass: roleClass,
+            roleLabel: roleLabel,
+            serverTitles: (this.model.get('servers') || []).join(', ')
+        };
+    },
+
     deleteLog: function (event) {
         var self = this;
         sweetAlert({

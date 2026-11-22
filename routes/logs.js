@@ -14,8 +14,8 @@ module.exports = function (logsManager) {
     });
 
     router.delete('/:log', function (req, res) {
-        var filename = req.params.log;
-        logsManager.delete(filename, function (err) {
+        var id = req.params.log;
+        logsManager.delete(id, function (err) {
             if (err) {
                 res.status(500).send(err);
             } else {
@@ -25,10 +25,10 @@ module.exports = function (logsManager) {
     });
 
     router.get('/:log/:mode', function (req, res) {
-        var requestedFilename = req.params.log;
+        var requestedId = req.params.log;
         var mode = req.params.mode === 'view' ? 'view' : 'download';
 
-        logsManager.getLogFile(requestedFilename, function (err, file) {
+        logsManager.getLogFile(requestedId, function (err, file) {
             if (err) {
                 res.status(500).send(err);
             } else {
