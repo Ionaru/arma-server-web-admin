@@ -345,8 +345,9 @@ extension and is matched by name), `test/` (adds the mocha globals), and `public
 
 ### CI
 
-`.github/workflows/ci.yml` runs on pushes to `master` and on pull requests, on Node 26: `pnpm install
---frozen-lockfile`, `pnpm run lint`, `pnpm test` and `pnpm run check-bundle`. It writes its own
+`.github/workflows/ci.yml` runs on pushes to `master` and on pull requests. `pnpm/setup` installs
+pnpm (the `packageManager` version), Node 26 and the dependencies (`require-lockfile: true`, so the
+install is frozen); then it runs `pnpm run lint`, `pnpm test` and `pnpm run check-bundle`. It writes its own
 `config.js` from `config.js.example` with `path` pointed at an empty folder, since an unchanged copy
 crashes the tests (see above). The smoke run is not part of CI.
 
