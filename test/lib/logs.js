@@ -209,6 +209,86 @@ describe('Logs listing', function () {
         });
     });
 
+    describe('wine profile paths (R2)', function () {
+        var origHome;
+        var home;
+        var wineCfg = {path: '/T/arma', type: 'wine', game: 'arma3'};
+
+        beforeEach(function () {
+            origHome = process.env.HOME;
+            home = fs.mkdtempSync(path.join(os.tmpdir(), 'wine-home-'));
+            process.env.HOME = home;
+        });
+
+        afterEach(function () {
+            if (origHome === undefined) {
+                delete process.env.HOME;
+            } else {
+                process.env.HOME = origHome;
+            }
+            fsExtra.rmrfSync(home);
+        });
+
+        var dirsFor = function (parameters) {
+            var instance = new Logs(wineCfg);
+            instance.setServers(function () {
+                return [fakeServer('A', parameters)];
+            });
+            return instance.logDirectories();
+        };
+
+        var H = function () {
+            return userhome('.wine');
+        };
+
+        it('R2: should map a Windows drive path into the wine prefix and keep the default entry', function () {
+            var D = path.resolve(new Logs(wineCfg).logsPath());
+
+            dirsFor(['-profiles=C:\\Arma\\P\\']).should.eql([
+                {path: path.join(H(), 'dosdevices', 'c:', 'Arma', 'P'), kind: 'profiles', servers: ['A']},
+                {path: D, kind: 'default', servers: []}
+            ]);
+        });
+
+        it('R2: should map a forward-slash drive path and lowercase the drive letter', function () {
+            dirsFor(['-profiles=Z:/srv/p'])[0].path.should.eql(path.join(H(), 'dosdevices', 'z:', 'srv', 'p'));
+        });
+
+        it('R2: should map a bare drive root to the drive entry', function () {
+            dirsFor(['-profiles=C:\\'])[0].path.should.eql(path.join(H(), 'dosdevices', 'c:'));
+        });
+
+        it('R2: should resolve a relative backslash path against the Arma install folder', function () {
+            dirsFor(['-profiles=profiles\\op'])[0].path.should.eql('/T/arma/profiles/op');
+        });
+
+        it('R2: should keep an absolute unix path as is', function () {
+            dirsFor(['-profiles=/srv/p'])[0].path.should.eql('/srv/p');
+        });
+
+        it('R2: should list files of a mapped folder and its HC_<n> subfolders', function (done) {
+            var mapped = path.join(home, '.wine', 'dosdevices', 'c:', 'Arma', 'P');
+            fsExtra.mkdirpSync(path.join(mapped, 'HC_0'));
+            fs.writeFileSync(path.join(mapped, 'a.rpt'), 'x');
+            fs.writeFileSync(path.join(mapped, 'HC_0', 'b.rpt'), 'x');
+
+            var instance = new Logs(wineCfg);
+            instance.setServers(function () {
+                return [fakeServer('A', ['-profiles=C:\\Arma\\P'])];
+            });
+
+            instance.logFiles(function (err, files) {
+                if (err) {
+                    return done(err);
+                }
+
+                names(files).sort().should.eql(['a.rpt', 'b.rpt']);
+                byName(files, 'b.rpt').role.should.eql('HC_0');
+                done();
+            });
+        });
+    });
+
     describe('logFiles() listing (B3, B4)', function () {
         var listProfiles = function (servers, cb) {
             makeLogs(servers).logFiles(cb);
@@ -424,8 +504,34 @@ describe('Logs listing', function () {
             expectRpt('====\n' + hcLine + '"-client"\n====\n', 'HC', done);
         });
 
-        it('B5: should only read the first 4096 bytes', function (done) {
-            expectRpt(new Array(5001).join('x') + ' -client\n', 'server', done);
+        var longMods = new Array(201).join('C:\\Arma\\Game\\mods\\@some_long_mod_name;');
+        var longLine = function (tail) {
+            return '====\n== arma3server_x64.exe -connect=127.0.0.1 -mod=' + longMods + ' -port=2302' + tail + '\n====\n';
+        };
+
+        it('R1: should find -client after a very long -mod= list', function (done) {
+            longMods.length.should.eql(7600);
+            expectRpt(longLine(' -client'), 'HC', done);
+        });
+
+        it('R1: should label the same long header without -client as server', function (done) {
+            expectRpt(longLine(''), 'server', done);
+        });
+
+        it('R1: should find -client after 5000 characters on the first line', function (done) {
+            expectRpt(new Array(5001).join('x') + ' -client\n', 'HC', done);
+        });
+
+        it('R1: should only search the first 10 lines', function (done) {
+            expectRpt(new Array(11).join('log line\n') + ' -client\n', 'server', done);
+        });
+
+        it('R1: should find -client on the 10th line', function (done) {
+            expectRpt(new Array(10).join('log line\n') + ' -client\n', 'HC', done);
+        });
+
+        it('R1: should not read beyond 65536 bytes', function (done) {
+            expectRpt(new Array(70001).join('x') + ' -client\n', 'server', done);
         });
 
         it('B5: should give an empty rpt a null role', function (done) {

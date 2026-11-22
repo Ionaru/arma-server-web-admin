@@ -80,7 +80,8 @@ profile folder write the same log file, and one of the logs is lost. To keep the
   The Source column shows which server each file belongs to and whether it is the server's log or a
   headless client's.
 - On Linux, each headless client's output is also saved in the logs folder as
-  `arma3server_<time>_HC_<n>.log`.
+  `arma3server_<time>_<server id>_HC_<n>.log`, next to the server's own
+  `arma3server_<time>_<server id>.log`.
 
 ## System Configuration
 

@@ -135,8 +135,9 @@ assignments can appear before or after it.
 Driven by `config.type` (`linux` / `windows` / `wine`), passed to `arma-server` as `platform`.
 
 - **Log capture only happens on Linux** (`lib/server.js`): stdout/stderr of the server and of each
-  headless client are piped to `<path>/logs/arma3server_<time>.log` and `..._HC_<n>.log`. The Linux
-  game writes no `.rpt` and ignores `-profiles`. On Windows the game writes its own `.rpt`, so
+  headless client are piped to `<path>/logs/arma3server_<time>_<server id>.log` and
+  `..._<server id>_HC_<n>.log`; the id keeps servers started in the same second (`Manager.load()`
+  auto-start) out of each other's file. The Linux game writes no `.rpt` and ignores `-profiles`. On Windows the game writes its own `.rpt`, so
   nothing is captured.
 - `Logs.logsPath()` (the default log folder) differs per platform (`lib/logs.js`). It is only one of
   the folders the log view lists; see *Logs and headless clients*.
@@ -152,8 +153,12 @@ happened in production: the dedicated server's log was gone and only a headless 
 
 - **Headless clients start staggered** (`Server.headlessClientStartDelay`, 5 s after the server, then
   `Server.headlessClientStartInterval`, 2 s apart). Pending starts are timers that
-  `stopHeadlessClients()` cancels when the server process closes; do not go back to spawning them
-  in the `start()` loop.
+  `stopHeadlessClients()` cancels when the server process closes, and `stop()` cancels before it
+  kills (the timer's instance check still passes while the process exits or hangs). Do not go back
+  to spawning them in the `start()` loop.
+- **A headless client's options are captured when its start is scheduled** (`headlessClientOptions`),
+  not when it spawns: `PUT /api/servers/:id` updates the running server, and a port, password or mod
+  change saved in the first seconds must not reach headless clients of the process already running.
 - **Each headless client gets its own profiles folder.** `getHeadlessClientParameters(i)` strips any
   inherited `-profiles=` and adds `-profiles=<server profiles>\HC_<i>`, which also stops the shared
   `DataCache` lock wait. Without a server `-profiles` the parameters pass through and only the stagger
@@ -163,15 +168,17 @@ happened in production: the dedicated server's log was gone and only a headless 
   quotes are stripped.
 - **The log view lists several folders** (`Logs.prototype.logDirectories`): each server's profiles
   folder plus its `HC_<n>` subfolders, and the default folder when a server has no `-profiles`
-  (always on Linux). Relative `-profiles` paths resolve against `config.path`, as Arma resolves them
-  from its install folder.
+  (always on Linux and wine). Relative `-profiles` paths resolve against `config.path`, as Arma
+  resolves them from its install folder. On wine, drive paths such as `C:\Arma\P` are mapped through
+  `~/.wine/dosdevices/<drive>:`, since the host's `path.resolve` would treat them as relative names.
 - **Profile folders only show `.rpt`, `.log`, `.mdmp` and `.bidmp`.** Operators keep config files
   (with passwords) in them, and the log view can download and delete. Do not widen the filter.
 - **Logs are addressed by `id`** (a hash of the path plus the name), never by bare name, because two
   folders can hold the same name. `getLogFile` only resolves ids from the current listing, which is
   also what stops path traversal; keep every read, download and delete going through it.
-- The Source column's role comes from the `HC_<n>` folder, else the `-client` argument in an `.rpt`
-  header, else the `_HC_<n>.log` suffix of a Linux capture.
+- The Source column's role comes from the `HC_<n>` folder, else the `-client` argument in the first
+  10 lines of an `.rpt` (read up to 64 KB: `arma-server` puts `-client` after the whole `-mod=` list,
+  which can run past 5 KB), else the `_HC_<n>.log` suffix of a Linux capture.
 
 ## Op mode
 

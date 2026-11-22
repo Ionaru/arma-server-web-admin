@@ -649,20 +649,20 @@ describe('Server', function () {
                 var server = started('linux', logsStub(dir, suffixes));
 
                 var child = server.startHeadlessClient(1);
-                suffixes.should.eql(['HC_1']);
+                suffixes.should.eql(['test_HC_1']);
 
                 child.stdout.emit('data', Buffer.from('out1;'));
                 child.stderr.emit('data', Buffer.from('err1;'));
                 child.stdout.emit('data', Buffer.from('out2;'));
                 child.emit('close', 0);
 
-                var file = path.join(dir, 'log_HC_1.log');
+                var file = path.join(dir, 'log_test_HC_1.log');
                 var attempts = 0;
                 var poll = function () {
                     var content = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
                     if (content.length >= 15 || attempts++ > 100) {
                         content.should.eql('out1;err1;out2;');
-                        suffixes.should.eql(['HC_1']);
+                        suffixes.should.eql(['test_HC_1']);
                         return done();
                     }
                     setTimeout(poll, 10);
@@ -742,6 +742,99 @@ describe('Server', function () {
                         (server.headlessClientTimers || []).length.should.eql(0);
                         done();
                     });
+                });
+            });
+        });
+
+        describe('review fixes (unit 04)', function () {
+            it('R3: should spawn HCs with the settings the server started with', function (done) {
+                moduleConfig.parameters = [];
+                var server = makeServer({
+                    port: 2302,
+                    password: 'a',
+                    mods: ['@a'],
+                    file_patching: false,
+                    parameters: ['-profiles=C:\\P'],
+                    number_of_headless_clients: 1
+                });
+
+                server.start();
+
+                server.update({
+                    title: 'test',
+                    port: 2402,
+                    password: 'b',
+                    mods: ['@b'],
+                    file_patching: true,
+                    parameters: ['-profiles=C:\\Q'],
+                    number_of_headless_clients: 1
+                });
+
+                later(DELAY + 40, function () {
+                    hcCalls.should.eql(1);
+                    hcOptions[0].port.should.eql(2302);
+                    hcOptions[0].password.should.eql('a');
+                    hcOptions[0].mods.should.eql(['@a']);
+                    hcOptions[0].filePatching.should.eql(false);
+                    hcOptions[0].parameters.should.eql(['-profiles=C:\\P\\HC_0']);
+                    done();
+                });
+            });
+
+            it('R3: headlessClientOptions() should return a copy of the mods', function () {
+                var server = makeServer({mods: ['@a']});
+                var options = server.headlessClientOptions(0);
+
+                options.mods.should.eql(['@a']);
+                (options.mods === server.mods).should.be.false();
+            });
+
+            it('R3: startHeadlessClient() should use the options it is given', function () {
+                var server = makeServer({port: 2302, number_of_headless_clients: 1});
+                server.instance = fakeChild();
+                server.headlessClientInstances = [];
+
+                var options = server.headlessClientOptions(0);
+                options.port = 9999;
+                server.startHeadlessClient(0, options);
+
+                hcOptions[0].port.should.eql(9999);
+            });
+
+            it('R4: stop() should cancel pending HC starts even when the process hangs', function (done) {
+                var server = makeServer({number_of_headless_clients: 2});
+                var calls = 0;
+
+                server.start();
+                // A hung process: kill() never leads to close.
+                serverChildren[0].kill = function () {
+                    serverChildren[0].killCount++;
+                };
+
+                server.stop(function () {
+                    calls++;
+                });
+
+                later(DELAY + 2 * INTERVAL + 60, function () {
+                    hcCalls.should.eql(0);
+                    calls.should.eql(1);
+                    done();
+                });
+            });
+
+            it('R5: should name the server capture and HC captures after the server id on linux', function (done) {
+                var dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hc-logs-'));
+                tmpDirs.push(dir);
+                var suffixes = [];
+                var server = makeServer({number_of_headless_clients: 1}, 'linux', logsStub(dir, suffixes));
+
+                server.start();
+                suffixes.should.eql(['test']);
+
+                later(DELAY + 40, function () {
+                    suffixes.should.eql(['test', 'test_HC_0']);
+                    // let the capture streams open before cleanup removes the directory
+                    later(50, done);
                 });
             });
         });
