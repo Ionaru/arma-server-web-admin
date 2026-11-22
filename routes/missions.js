@@ -3,7 +3,8 @@ var express = require('express');
 var multer = require('multer');
 var path = require('path');
 
-var upload = multer({storage: multer.diskStorage({})});
+// multer 2 decodes filenames as latin1 by default; browsers send UTF-8
+var upload = multer({defParamCharset: 'utf8', storage: multer.diskStorage({})});
 
 module.exports = function (missionsManager) {
     var router = express.Router();
