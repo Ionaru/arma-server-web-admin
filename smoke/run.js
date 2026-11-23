@@ -17,7 +17,7 @@ var playwright = require('@playwright/test');
 
 var repoRoot = path.resolve(__dirname, '..');
 
-var CHECK_COUNT = 8;
+var CHECK_COUNT = 9;
 var WAIT_TIMEOUT = 15 * 1000;
 var FIRST_LOAD_TIMEOUT = 60 * 1000;
 var HOME_READY_DEADLINE = 60 * 1000;
@@ -382,6 +382,100 @@ checks.push({name: 'missions', run: async function (page) {
     await clickNav(page, 'a#missions', '#missions');
     await rowWithText(page, 'smoke').waitFor({state: 'visible', timeout: WAIT_TIMEOUT});
     await screenshotBoth(page, 'missions');
+}});
+
+// Uploads through the real form (FormData over XHR). The file input is named `missions` and shares
+// its id with the navbar link, so it is addressed through its panel. The mission list refreshes via
+// the socket `missions` event, not through the upload view.
+var uploadPosts = function () {
+    return requests.filter(function (request) {
+        return request.method === 'POST' && request.url.indexOf('/api/missions') !== -1;
+    }).length;
+};
+
+var uploadAndExpect = async function (page, label, names, hrefs) {
+    var uploadDir = fs.mkdtempSync(path.join(root, 'upload-'));
+    var files = names.map(function (name) {
+        var file = path.join(uploadDir, name);
+
+        fs.writeFileSync(file, 'SMOKE-UPLOAD');
+        return file;
+    });
+    var input = page.locator('#upload input[type=file]');
+    var button = page.locator('#upload button[type=submit]');
+
+    await input.waitFor({state: 'attached', timeout: WAIT_TIMEOUT});
+    await page.evaluate(function () { window.__smokeUploadMarker = 'still-here'; });
+    await input.setInputFiles(files);
+    await button.click({timeout: WAIT_TIMEOUT});
+
+    for (var i = 0; i < hrefs.length; i++) {
+        await page.locator('#content table tbody a[href="' + hrefs[i] + '"]').waitFor({state: 'visible', timeout: WAIT_TIMEOUT});
+    }
+
+    var marker = await page.evaluate(function () { return window.__smokeUploadMarker; });
+
+    if (marker !== 'still-here' || await page.evaluate(function () { return window.location.hash; }) !== '#missions') {
+        throw new Error(label + ': the page navigated or reloaded during the upload');
+    }
+
+    try {
+        await page.waitForFunction(function () {
+            var btn = document.querySelector('#upload button[type=submit]');
+            var file = document.querySelector('#upload input[type=file]');
+
+            return btn && file && !btn.hasAttribute('disabled') && !btn.hasAttribute('data-loading') && file.files.length === 0;
+        }, null, {timeout: WAIT_TIMEOUT});
+    } catch (err) {
+        throw new Error(label + ': the Upload button did not become enabled again or the file input was not emptied', {cause: err});
+    }
+};
+
+checks.push({name: 'mission upload', run: async function (page) {
+    await clickNav(page, 'a#missions', '#missions');
+    await rowWithText(page, 'smoke').waitFor({state: 'visible', timeout: WAIT_TIMEOUT});
+
+    await uploadAndExpect(page, 'single upload', ['Upload_One.Altis.pbo'], ['/api/missions/upload_one.altis.pbo']);
+    await uploadAndExpect(page, 'several files', ['Upload_A.Altis.pbo', 'Upload_B.Stratis.pbo'], [
+        '/api/missions/upload_a.altis.pbo',
+        '/api/missions/upload_b.stratis.pbo'
+    ]);
+    await screenshot(page, 'missions-upload');
+
+    // Nothing selected: no request and the button stays usable.
+    var before = uploadPosts();
+    var allBefore = requests.length;
+
+    await page.evaluate(function () { window.__smokeUploadMarker = 'still-here'; });
+    await page.locator('#upload button[type=submit]').click({timeout: WAIT_TIMEOUT});
+    await page.waitForTimeout(1000);
+
+    var sent = requests.slice(allBefore).filter(function (request) {
+        return request.url.indexOf('/api/missions') !== -1;
+    });
+
+    if (sent.length !== 0 || uploadPosts() !== before) {
+        throw new Error('clicking Upload with no file selected sent ' + sent.length + ' request(s) to /api/missions');
+    }
+
+    var state = await page.evaluate(function () {
+        var btn = document.querySelector('#upload button[type=submit]');
+
+        return {
+            disabled: btn.hasAttribute('disabled'),
+            loading: btn.hasAttribute('data-loading'),
+            marker: window.__smokeUploadMarker,
+            hash: window.location.hash
+        };
+    });
+
+    if (state.disabled || state.loading) {
+        throw new Error('the Upload button is not enabled after clicking with no file selected');
+    }
+
+    if (state.marker !== 'still-here' || state.hash !== '#missions') {
+        throw new Error('the page navigated or reloaded when Upload was clicked with no file selected');
+    }
 }});
 
 checks.push({name: 'mods', run: async function (page) {
