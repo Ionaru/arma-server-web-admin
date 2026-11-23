@@ -76,6 +76,29 @@ describe('lib/setup-basic-auth isAuthorized', function () {
         });
     });
 
+    describe('fail closed on a bad config (B7)', function () {
+        it('B7: a non-string configured password refuses and does not throw', function () {
+            var config = {auth: {username: 'admin', password: 1234}};
+            var result;
+            (function () {
+                result = setupBasicAuth.isAuthorized(config, reqWith(B('x', 'y')));
+            }).should.not.throw();
+            result.should.equal(false);
+        });
+
+        it('B7: a user with a non-string password is skipped, the others still work', function () {
+            var config = {auth: [{username: 'a', password: 'good'}, {username: 'b', password: 1234}]};
+            var good;
+            var bad;
+            (function () {
+                good = setupBasicAuth.isAuthorized(config, reqWith(B('a', 'good')));
+                bad = setupBasicAuth.isAuthorized(config, reqWith(B('x', 'y')));
+            }).should.not.throw();
+            good.should.equal(true);
+            bad.should.equal(false);
+        });
+    });
+
     describe('same rule as the middleware (B4)', function () {
         var configs = {
             'no auth': {},
