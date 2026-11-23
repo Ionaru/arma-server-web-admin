@@ -4,6 +4,7 @@ var fs = require('fs');
 var fsExtra = require('fs.extra');
 var os = require('os');
 var path = require('path');
+var bodyParser = require('body-parser');
 var request = require('supertest');
 
 var Missions = require('../../lib/missions.js');
@@ -183,6 +184,185 @@ describe('routes/missions upload (B1-B6)', function () {
                 res.status.should.eql(200);
                 res.body.should.eql({success: true});
                 listing().should.eql([], 'listing: ' + JSON.stringify(listing()));
+                done();
+            });
+    });
+});
+
+function binaryParser(res, callback) {
+    var chunks = [];
+    res.on('data', function (chunk) {
+        chunks.push(chunk);
+    });
+    res.on('end', function () {
+        callback(null, Buffer.concat(chunks));
+    });
+}
+
+describe('routes/missions download (B2-B3)', function () {
+    var tmp;
+    var dir;
+    var app;
+
+    beforeEach(function () {
+        tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'missions-download-'));
+        dir = path.join(tmp, '.arma', 'mpmissions');
+        fsExtra.mkdirpSync(dir);
+
+        var manager = {
+            missionsPath: function () {
+                return dir;
+            },
+            missionPath: function (name) {
+                return path.join(dir, name);
+            },
+            missions: []
+        };
+
+        app = express();
+        app.set('env', 'test');
+        app.use('/api/missions', missionsRoute(manager));
+    });
+
+    afterEach(function () {
+        fsExtra.rmrfSync(tmp);
+    });
+
+    it('B2a: GET /<name> serves a mission below a dot-directory as an attachment', function (done) {
+        fs.writeFileSync(path.join(dir, 'Foo.Altis.pbo'), Buffer.from('PBO-FOO'));
+
+        request(app)
+            .get('/api/missions/Foo.Altis.pbo')
+            .buffer(true)
+            .parse(binaryParser)
+            .end(function (err, res) {
+                if (err) {
+                    return done(err);
+                }
+
+                res.status.should.eql(200);
+                res.headers['content-disposition'].should.containEql('attachment');
+                res.headers['content-disposition'].should.containEql('Foo.Altis.pbo');
+                res.body.equals(Buffer.from('PBO-FOO')).should.eql(true);
+                done();
+            });
+    });
+
+    it('B2b: GET /<name> works for a mission name with a space', function (done) {
+        fs.writeFileSync(path.join(dir, 'My Op.Altis.pbo'), Buffer.from('SPACE'));
+
+        request(app)
+            .get('/api/missions/My%20Op.Altis.pbo')
+            .buffer(true)
+            .parse(binaryParser)
+            .end(function (err, res) {
+                if (err) {
+                    return done(err);
+                }
+
+                res.status.should.eql(200);
+                res.headers['content-disposition'].should.containEql('attachment');
+                res.headers['content-disposition'].should.containEql('My Op.Altis.pbo');
+                res.body.equals(Buffer.from('SPACE')).should.eql(true);
+                done();
+            });
+    });
+
+    it('B3: GET /..%2Fsecret.txt is refused with 403 and does not leak the file', function (done) {
+        var plainDir = path.join(tmp, 'mpmissions');
+        fsExtra.mkdirpSync(plainDir);
+        fs.writeFileSync(path.join(tmp, 'secret.txt'), 'TOP-SECRET');
+
+        var manager = {
+            missionsPath: function () {
+                return plainDir;
+            },
+            missionPath: function (name) {
+                return path.join(plainDir, name);
+            },
+            missions: []
+        };
+        var plainApp = express();
+        plainApp.set('env', 'test');
+        plainApp.use('/api/missions', missionsRoute(manager));
+
+        request(plainApp)
+            .get('/api/missions/..%2Fsecret.txt')
+            .end(function (err, res) {
+                if (err) {
+                    return done(err);
+                }
+
+                res.status.should.eql(403);
+                (res.text || '').should.not.containEql('TOP-SECRET');
+                done();
+            });
+    });
+});
+
+describe('routes/missions workshop (B8)', function () {
+    var calls;
+    var app;
+
+    beforeEach(function () {
+        calls = [];
+        var manager = {
+            missions: [],
+            downloadSteamWorkshop: function (id, cb) {
+                calls.push(id);
+                cb();
+            }
+        };
+
+        app = express();
+        app.set('env', 'test');
+        app.use(bodyParser.json());
+        app.use('/api/missions', missionsRoute(manager));
+    });
+
+    it('B8a: POST /workshop without a body is 400 and downloads nothing', function (done) {
+        request(app)
+            .post('/api/missions/workshop')
+            .end(function (err, res) {
+                if (err) {
+                    return done(err);
+                }
+
+                res.status.should.eql(400);
+                res.body.should.eql({error: 'id is required'});
+                calls.should.eql([]);
+                done();
+            });
+    });
+
+    it('B8a: POST /workshop with {} is 400 and downloads nothing', function (done) {
+        request(app)
+            .post('/api/missions/workshop')
+            .send({})
+            .end(function (err, res) {
+                if (err) {
+                    return done(err);
+                }
+
+                res.status.should.eql(400);
+                res.body.should.eql({error: 'id is required'});
+                calls.should.eql([]);
+                done();
+            });
+    });
+
+    it('B8b: POST /workshop with an id downloads it once', function (done) {
+        request(app)
+            .post('/api/missions/workshop')
+            .send({id: '123456789'})
+            .end(function (err, res) {
+                if (err) {
+                    return done(err);
+                }
+
+                res.status.should.eql(200);
+                res.body.should.eql({success: true});
+                calls.should.eql(['123456789']);
                 done();
             });
     });

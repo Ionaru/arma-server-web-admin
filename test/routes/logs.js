@@ -107,3 +107,55 @@ describe('routes/logs (B8)', function () {
             });
     });
 });
+
+describe('routes/logs download from a dot-directory (B1)', function () {
+    var root;
+    var filePath;
+    var id;
+    var app;
+
+    beforeEach(function () {
+        root = fs.mkdtempSync(path.join(os.tmpdir(), 'logs-route-'));
+        var profiles = path.join(root, '.hidden', 'profiles');
+        fsExtra.mkdirpSync(profiles);
+        fsExtra.mkdirpSync(path.join(root, 'arma', 'logs'));
+
+        filePath = path.join(profiles, 'arma3server_x64_2026-11-21_19-30-10.rpt');
+        fs.writeFileSync(filePath, 'hello log\n');
+        id = crypto.createHash('sha1').update(filePath).digest('hex').slice(0, 12) + '-' + path.basename(filePath);
+
+        var logs = new Logs({path: path.join(root, 'arma'), type: 'linux', game: 'arma3'});
+        logs.setServers(function () {
+            return [{
+                title: 'A',
+                getParameters: function () {
+                    return ['-profiles=' + profiles];
+                }
+            }];
+        });
+
+        app = express();
+        app.set('env', 'test');
+        app.use('/api/logs', logsRoute(logs));
+    });
+
+    afterEach(function () {
+        fsExtra.rmrfSync(root);
+    });
+
+    it('B1: GET /<id>/download serves a log below a dot-directory as an attachment', function (done) {
+        request(app)
+            .get('/api/logs/' + encodeURIComponent(id) + '/download')
+            .expect(200)
+            .end(function (err, res) {
+                if (err) {
+                    return done(err);
+                }
+
+                res.headers['content-disposition'].should.containEql('attachment');
+                res.headers['content-disposition'].should.containEql(path.basename(filePath));
+                res.body.toString().should.eql('hello log\n');
+                done();
+            });
+    });
+});
