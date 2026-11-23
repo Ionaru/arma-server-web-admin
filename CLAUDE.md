@@ -229,6 +229,10 @@ happened in production: the dedicated server's log was gone and only a headless 
   (always on Linux and wine). Relative `-profiles` paths resolve against `config.path`, as Arma
   resolves them from its install folder. On wine, drive paths such as `C:\Arma\P` are mapped through
   `~/.wine/dosdevices/<drive>:`, since the host's `path.resolve` would treat them as relative names.
+- **Mission and mod deletes resolve names only from the current listing,** like logs
+  (`Missions.prototype.delete`, `Mods.prototype.delete`): an unlisted name is a 404 and nothing is
+  joined into a path. A mod's listed name is its absolute path, removed as is. Uploaded mission names
+  are cut to their last path segment after `decodeURI`.
 - **Profile folders only show `.rpt`, `.log`, `.mdmp` and `.bidmp`.** Operators keep config files
   (with passwords) in them, and the log view can download and delete. Do not widen the filter.
 - **Logs are addressed by `id`** (a hash of the path plus the name), never by bare name, because two

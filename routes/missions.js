@@ -46,7 +46,9 @@ module.exports = function (missionsManager) {
         var filename = req.params.mission;
 
         missionsManager.delete(filename, function (err) {
-            if (err) {
+            if (err && err.status === 404) {
+                res.status(404).json({error: err.message});
+            } else if (err) {
                 res.status(500).send(err);
             } else {
                 res.json({success: true});
