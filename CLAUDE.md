@@ -151,6 +151,9 @@ have made both jobs worse. It has its own module and its own file instead.
 
 `public/js/app/dialogs.js` is the only place dialogs are created: views call `dialogs.alert` and
 `dialogs.confirm` (a confirm's callback runs only on Confirm), never sweetalert2 directly.
+`public/css/styles.css` sets `.swal2-popup { font-size: 1.6rem; }` because Bootstrap 3 sets `html`
+to 10px while sweetalert2 sizes from `1rem`; recheck or drop it whenever the root font size changes
+(the Bootstrap upgrade).
 
 ## EventEmitter: use util.inherits
 
@@ -335,11 +338,12 @@ pnpm run smoke         # starts the real app and clicks through every page in he
   mode disabled), starts `app.js` there on a free port, and visits the dashboard, every server tab,
   missions, mods, logs and op mode, plus the Add server and Settings modals and the op mode Run now
   confirm and the log delete confirm (cancelled, never confirmed). On missions it also uploads
-  `.pbo` files through the real form (one file, then two in one selection), and checks that the rows
-  appear, the page does not navigate,
-  and the button and file input reset; clicking Upload with nothing selected must send no
-  request. The uploads land in the temp mpmissions folder, so a check that runs after it sees more
-  than the one seeded mission.
+  `.pbo` files through the real form (one file, then two in one selection, then one whose POST is
+  held 1.5 s by `page.route` so the Upload button can be checked for Ladda's `data-loading`
+  attribute while it is pending), and checks that the rows appear, the page does not navigate, and
+  the button and file input reset; clicking Upload with nothing selected must send no request. The
+  uploads land in the temp mpmissions folder, so a check that runs after it sees more than the one
+  seeded mission.
 - It fails on any console error, page error, app response >= 400 or failed script, stylesheet or
   font load, and on a missing DOM marker, including the Glyphicons font actually loading. There is
   no allowlist on purpose: fix the cause instead of filtering the message.
