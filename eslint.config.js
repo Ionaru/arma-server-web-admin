@@ -40,7 +40,7 @@ module.exports = [
         rules
     },
     {
-        // Bundled by webpack 1, so ES5/ES2015 only. The four globals below are the
+        // Bundled by webpack, kept to ES5/ES2015. The four globals below are the
         // ProvidePlugin keys in webpack.config.js.
         files: ['public/js/**/*.js'],
         languageOptions: {

@@ -1,5 +1,5 @@
 // One-shot webpack compile check: builds the frontend bundle into a temp directory and fails on
-// any error. Uses only the Node API that webpack 1 and webpack 5 share.
+// any error. Uses the webpack 5 Node API.
 var fs = require('fs');
 var os = require('os');
 var path = require('path');
@@ -22,7 +22,7 @@ var finish = function (code) {
     process.exitCode = code;
 };
 
-// Webpack 1 reports errors and warnings as strings, webpack 5 as objects with a message.
+// Webpack 5 reports errors and warnings as objects with a message, with a String() fallback for anything else.
 var describe = function (entry) {
     return entry && typeof entry === 'object' && entry.message ? entry.message : String(entry);
 };
