@@ -51,6 +51,7 @@ additionalConfigurationOptions | Additional configuration options appended to se
 parameters | Extra startup parameters added to servers and headless clients (a `-profiles` folder is given a subfolder per headless client, see [Logs and headless clients](#logs-and-headless-clients))
 serverMods | Mods that always and only will be used by the game servers
 auth | If both username and password is set, HTTP Basic Auth will be used
+allowedOrigins | Extra origins (`scheme://host[:port]`) allowed to send state-changing requests and open the socket. Only needed when a plain-HTTP reverse proxy rewrites the Host header
 prefix | Text prepended to all game servers name
 suffix | Text appended to all game servers name
 discord | Optional `{ token, channelId, onlineTimeoutMinutes }`. When token and channelId are set, op mode restarts are announced in that Discord channel. onlineTimeoutMinutes (default 15) is how long to wait for the op server before warning
