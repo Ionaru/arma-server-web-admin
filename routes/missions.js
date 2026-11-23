@@ -59,21 +59,5 @@ module.exports = function (missionsManager) {
         res.status(204).send();
     });
 
-    router.post('/workshop', function (req, res) {
-        var id = req.body && req.body.id;
-
-        if (!id) {
-            return res.status(400).json({error: 'id is required'});
-        }
-
-        missionsManager.downloadSteamWorkshop(id, function (err) {
-            if (err) {
-                res.status(500).send(err);
-            } else {
-                res.json({success: true});
-            }
-        });
-    });
-
     return router;
 };
