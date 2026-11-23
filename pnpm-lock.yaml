@@ -214,9 +214,6 @@ importers:
       jquery:
         specifier: ^3.8.0
         version: 3.8.0
-      jquery.iframe-transport:
-        specifier: ^1.0.0
-        version: 1.0.0
       ladda:
         specifier: 1.0.5
         version: 1.0.5
@@ -1194,9 +1191,6 @@ packages:
   jest-worker@27.5.1:
     resolution: {integrity: sha512-7vuh85V5cdDofPyxn58nrPjBktZo0u9x1g8WtjQol+jZDaE+fhN+cIvTj11GndBnMnyfrUOG1sZQxCdjKh+DKg==}
     engines: {node: '>= 10.13.0'}
-
-  jquery.iframe-transport@1.0.0:
-    resolution: {integrity: sha512-dKReRo8hsu7IRhhlWi4/zwpZaYQ+IB/H38X2k9JAY2V5iHxBP56Wk26XvPVt5dh+tEPomt15jXbpd4ApxzraBQ==}
 
   jquery@3.8.0:
     resolution: {integrity: sha512-AOYt0viqPysMUTq45O8gF9DuOnBT3Il/8WtM/TT8z/2QeGsZ70ImwSJtNFxznn2R71v8yIgaEunOGo82OY/f0g==}
@@ -2903,8 +2897,6 @@ snapshots:
       '@types/node': 26.6.6
       merge-stream: 2.0.0
       supports-color: 8.1.1
-
-  jquery.iframe-transport@1.0.0: {}
 
   jquery@3.8.0: {}
 

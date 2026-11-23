@@ -1,5 +1,3 @@
-require('jquery.iframe-transport');
-
 require('bootstrap/dist/css/bootstrap.css');
 require('ladda/dist/ladda-themeless.min.css');
 require('sweetalert/dist/sweetalert.css');
