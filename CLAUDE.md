@@ -16,7 +16,7 @@ The project is old and deliberately not modernised. Expect ES5-style `var` and p
 |---|---|
 | Runtime | Node. Production runs Node 26. `engines` in `package.json` is `^20.19.0 || ^22.13.0 || >=24` (the eslint 10 and mocha 12 floor). CI runs Node 26 on GitHub Actions (`.github/workflows/ci.yml`). |
 | Package manager | pnpm 12 (needs Node >= 18), pinned by `packageManager` in `package.json`; see *Dependencies: pnpm* |
-| Server | Express 4, socket.io 1 |
+| Server | Express 4, socket.io 4 |
 | Frontend | Backbone 1.3.3 + Marionette 2.4.7, Bootstrap 3, jQuery 3 |
 | Bundling | webpack 1, compiled **in memory** by `webpack-dev-middleware` (`app.js`) |
 | Process launcher | the `arma-server` package (0.0.7) actually spawns the game |
