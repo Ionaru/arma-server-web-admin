@@ -23,7 +23,14 @@ var server = require('http').Server(app);
 // engine.io answers /socket.io/ before Express runs, so the app's basic auth does not cover it.
 var io = require('socket.io')(server, {
     allowRequest: function (req, callback) {
-        callback(null, setupBasicAuth.isAuthorized(config, req));
+        var ok;
+        try {
+            ok = setupBasicAuth.isAuthorized(config, req);
+        } catch (e) {
+            ok = false;
+        }
+
+        callback(null, ok);
     }
 });
 
