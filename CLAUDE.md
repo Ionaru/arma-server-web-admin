@@ -81,7 +81,7 @@ lock, resolve afresh and write one, so don't use npm for installs.
 
 ## Boot sequence
 
-`app.js` in order: basic auth → body parser → morgan → static files → `Manager.load()` (which
+`app.js` in order: origin check → basic auth → body parser → morgan → static files → `Manager.load()` (which
 auto-starts servers) → `Mods.updateMods()` → mount routers → socket.io connection handler →
 `server.listen`, but only when `require.main === module` so tests can import the app.
 
@@ -148,6 +148,16 @@ have made both jobs worse. It has its own module and its own file instead.
   on the `http.Server` before Express runs, so the middleware never sees it. Only the handshake is
   checked (later requests carry the session's `sid`); `/socket.io/socket.io.js` stays public.
 - **REST handles writes**, under `/api/*`.
+- **Cross-origin requests are refused** (`lib/origin-check.js`, mounted first in `app.js`) so a page
+  on another site cannot use an admin's browser to change state or read the socket. The middleware
+  skips `GET`, `HEAD` and `OPTIONS` and answers 403 `{"error": "Cross-origin request refused"}` to any
+  other method when `isAllowed` says no. `isAllowed` goes in this order: an `Origin` listed in
+  `config.allowedOrigins`, then `Sec-Fetch-Site` (only `same-origin` and `none` pass), then `Origin`
+  against `Host`. A request with neither `Sec-Fetch-Site` nor `Origin` passes on purpose: it is not a
+  browser (curl, node clients), and this is not authentication. Browsers send `Sec-Fetch-Site` only
+  to HTTPS and localhost, so over plain HTTP on a LAN name the Origin and Host comparison decides.
+  The scheme is deliberately not compared, because behind a TLS proxy the panel cannot know it. The
+  socket handshake calls the same `isAllowed` from `allowRequest`, next to the basic auth check.
 
 `Backbone.history.start()` is deliberately deferred until the first `servers` event arrives
 (`public/js/app/router.js`), so nothing renders before there is data.
@@ -250,7 +260,8 @@ happened in production: the dedicated server's log was gone and only a headless 
 - **Mission and mod deletes resolve names only from the current listing,** like logs
   (`Missions.prototype.delete`, `Mods.prototype.delete`): an unlisted name is a 404 and nothing is
   joined into a path. A mod's listed name is its absolute path, removed as is. Uploaded mission names
-  are cut to their last path segment after `decodeURI`.
+  are cut to their last path segment after `decodeURI`; a name that does not decode (`100%.pbo`) is
+  used as sent.
 - **Profile folders only show `.rpt`, `.log`, `.mdmp` and `.bidmp`.** Operators keep config files
   (with passwords) in them, and the log view can download and delete. Do not widen the filter.
 - **Logs are addressed by `id`** (a hash of the path plus the name), never by bare name, because two
