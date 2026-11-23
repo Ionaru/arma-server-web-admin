@@ -60,6 +60,15 @@ lock, resolve afresh and write one, so don't use npm for installs.
 - **webpack follows pnpm's symlinks** to their real paths under `node_modules/.pnpm`, so the
   bundle holds one copy each of jQuery and Backbone. Marionette 2.4.7 still gets its own underscore
   1.8.3, as it did under npm.
+- **Two underscore instances in the bundle.** Under webpack 5, `require('underscore')` resolves
+  through the package's `module` export condition to the ES module build (`modules/index-all.js`),
+  which webpack exposes as a namespace object with getter-only properties. The ProvidePlugin global
+  `_` is therefore pinned to `underscore/underscore-umd.js`: backbone.bootstrap-modal assigns
+  `_.templateSettings` on the global `_`, and with the plain `underscore` entry the modal footers
+  render `{{cancelText}} {{okText}}` (the smoke run catches this). The consequence is two underscore
+  1.13 instances, the required ESM namespace and the global UMD `_`. Global configuration such as
+  `_.templateSettings` or `_.mixin` does not carry over between them, and cannot be set through the
+  required namespace.
 - **Fresh releases wait a day.** pnpm 12's `minimumReleaseAge` defaults to 1440 minutes, so a
   version published in the last 24 hours may not be picked.
 - **Switching an existing npm install** (the production box): stop the service and delete
@@ -326,6 +335,8 @@ pnpm run smoke         # starts the real app and clicks through every page in he
 - It fails on any console error, page error, app response >= 400 or failed script, stylesheet or
   font load, and on a missing DOM marker, including the Glyphicons font actually loading. There is
   no allowlist on purpose: fix the cause instead of filtering the message.
+- It also fails when the Add server or Settings modal shows literal `{{` or `}}` text, which means
+  an unrendered backbone.bootstrap-modal template (`assertNoTemplateMarkers` in `smoke/run.js`).
 - The config cannot be swapped by changing the working directory: `app.js` and `lib/server.js`
   resolve `config.js` against the repo. `smoke/config-shim.js` (loaded with `node --require`)
   redirects both requires to the temp config, so a developer's real `config.js` is never read or
