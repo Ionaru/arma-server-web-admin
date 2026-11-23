@@ -253,6 +253,92 @@ describe('routes/missions upload name (B4)', function () {
     });
 });
 
+describe('routes/missions upload undecodable name (B6-B7)', function () {
+    var root;
+    var missionsDir;
+    var missions;
+    var inFlight;
+    var app;
+
+    beforeEach(function (done) {
+        root = fs.mkdtempSync(path.join(os.tmpdir(), 'missions-decode-'));
+        missionsDir = path.join(root, 'mpmissions');
+        fs.mkdirSync(missionsDir, {recursive: true});
+
+        missions = new Missions({path: root});
+        inFlight = 0;
+        var original = missions.updateMissions;
+        missions.updateMissions = function (cb) {
+            inFlight++;
+            original.call(this, function (err) {
+                inFlight--;
+                if (cb) {
+                    cb(err);
+                }
+            });
+        };
+
+        app = express();
+        app.set('env', 'test');
+        app.use('/api/missions', missionsRoute(missions));
+
+        missions.updateMissions(function () {
+            done();
+        });
+    });
+
+    afterEach(function (done) {
+        var waitForIdle = function () {
+            if (inFlight > 0) {
+                return setTimeout(waitForIdle, 10);
+            }
+
+            fs.rmSync(root, {recursive: true, force: true});
+            done();
+        };
+
+        waitForIdle();
+    });
+
+    it('B6: nine files with an undecodable ninth name all land and the request succeeds', function (done) {
+        var req = request(app).post('/api/missions');
+        for (var i = 1; i <= 8; i++) {
+            req = req.attach('missions', Buffer.from('x' + i), 'm' + i + '.pbo');
+        }
+        req = req.attach('missions', Buffer.from('NINE'), '%E0.pbo');
+
+        req.end(function (err, res) {
+            if (err) {
+                return done(err);
+            }
+
+            res.status.should.eql(200);
+            res.body.should.eql({success: true});
+            var expected = ['%e0.pbo', 'm1.pbo', 'm2.pbo', 'm3.pbo', 'm4.pbo', 'm5.pbo', 'm6.pbo', 'm7.pbo', 'm8.pbo'];
+            fs.readdirSync(missionsDir).sort().should.eql(expected, 'listing: ' + JSON.stringify(fs.readdirSync(missionsDir)));
+            fs.readFileSync(path.join(missionsDir, '%e0.pbo')).toString().should.eql('NINE');
+            done();
+        });
+    });
+
+    it('B7: a single file named 100%.pbo answers 200 and is stored under that name', function (done) {
+        request(app)
+            .post('/api/missions')
+            .attach('missions', Buffer.from('PCT'), '100%.pbo')
+            .end(function (err, res) {
+                if (err) {
+                    return done(err);
+                }
+
+                res.status.should.eql(200);
+                res.body.should.eql({success: true});
+                fs.readdirSync(missionsDir).should.eql(['100%.pbo'], 'listing: ' + JSON.stringify(fs.readdirSync(missionsDir)));
+                fs.readFileSync(path.join(missionsDir, '100%.pbo')).toString().should.eql('PCT');
+                done();
+            });
+    });
+});
+
 describe('routes/missions delete (B1-B3)', function () {
     var root;
     var missionsDir;
