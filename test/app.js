@@ -1,3 +1,4 @@
+require('should');
 const request = require('supertest');
 
 const app = require('../app');
@@ -40,6 +41,34 @@ describe('App', function () {
             .expect('Content-Type', /json/)
             .expect(400)
             .end(done);
+    });
+
+    describe('cross-origin protection (B14)', function () {
+        it('B14: a state-changing request with a foreign Origin answers 403 before validation', async function () {
+            const res = await request(app)
+                .put('/api/op-mode')
+                .set('Origin', 'http://evil.example')
+                .send({enabled: true, days: [0], time: 'half seven', opServerId: 'whatever'});
+            res.status.should.equal(403);
+            res.headers['content-type'].should.match(/json/);
+            res.body.should.eql({error: 'Cross-origin request refused'});
+        });
+
+        // Always sends the header: without it this would start an op mode run.
+        it('B14: an op mode run with Sec-Fetch-Site cross-site answers 403', async function () {
+            await request(app)
+                .post('/api/op-mode/run')
+                .set('Sec-Fetch-Site', 'cross-site')
+                .expect(403);
+        });
+
+        it('B14: a read with a foreign Origin is still served', async function () {
+            await request(app)
+                .get('/api/servers')
+                .set('Origin', 'http://evil.example')
+                .expect('Content-Type', /json/)
+                .expect(200);
+        });
     });
 
     it('should serve servers', function (done) {

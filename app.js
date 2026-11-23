@@ -9,6 +9,7 @@ var webpackMiddleware = require('webpack-dev-middleware');
 var config = require('./config');
 var webpackConfig = require('./webpack.config');
 var setupBasicAuth = require('./lib/setup-basic-auth');
+var originCheck = require('./lib/origin-check');
 var Manager = require('./lib/manager');
 var Missions = require('./lib/missions');
 var Mods = require('./lib/mods');
@@ -20,12 +21,13 @@ var OpModeNotifier = require('./lib/op-mode-notifier');
 
 var app = express();
 var server = require('http').Server(app);
-// engine.io answers /socket.io/ before Express runs, so the app's basic auth does not cover it.
+// engine.io answers /socket.io/ before Express runs, so the app's basic auth and origin check do not
+// cover it. It only calls allowRequest for the handshake, a GET, so the method is not considered.
 var io = require('socket.io')(server, {
     allowRequest: function (req, callback) {
         var ok;
         try {
-            ok = setupBasicAuth.isAuthorized(config, req);
+            ok = originCheck.isAllowed(config, req) && setupBasicAuth.isAuthorized(config, req);
         } catch (e) {
             ok = false;
         }
@@ -34,6 +36,7 @@ var io = require('socket.io')(server, {
     }
 });
 
+app.use(originCheck(config));
 setupBasicAuth(config, app);
 
 app.use(bodyParser.json());

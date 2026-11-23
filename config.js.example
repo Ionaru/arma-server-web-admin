@@ -18,6 +18,7 @@ module.exports = {
     username: '', // Username for HTTP Basic Auth
     password: '', // Password for HTTP Basic Auth
   },
+  allowedOrigins: [], // Extra origins (scheme://host[:port]) allowed to send state-changing requests and open the socket, only needed when a plain-HTTP reverse proxy rewrites the Host header.
   prefix: "", // Prefix to all server names
   suffix: "", // Suffix to all server names
   logFormat: "dev", // expressjs/morgan log format
