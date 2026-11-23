@@ -18,12 +18,14 @@ The project is old and deliberately not modernised. Expect ES5-style `var` and p
 | Package manager | pnpm 12 (needs Node >= 18), pinned by `packageManager` in `package.json`; see *Dependencies: pnpm* |
 | Server | Express 5, socket.io 4 |
 | Frontend | Backbone 1.3.3 + Marionette 2.4.7, Bootstrap 3, jQuery 3 |
-| Bundling | webpack 1, compiled **in memory** by `webpack-dev-middleware` (`app.js`) |
+| Bundling | webpack 5 (development mode), compiled **in memory** by `webpack-dev-middleware` (`app.js`) |
 | Process launcher | the `arma-server` package (0.0.10) actually spawns the game |
 | Status polling | `gamedig` 5, every 5s per running server; a poll is skipped while the previous query for the same process is still in flight (a failing gamedig 5 query takes about 4 to 6 s for Arma 2/3, read from the gamedig source) |
 | Tests | mocha 12, `should`, supertest 7, timekeeper 2; a Playwright smoke run of the real UI (`smoke/`) |
 
 **There is no build step.** `pnpm start` is the whole story; webpack compiles the bundle on request.
+`webpack.config.js` sets `context: __dirname`: webpack 5 resolves loaders from `context`, which
+defaults to the working directory, so without it the compile fails when the panel starts elsewhere.
 
 Getting a fresh clone running:
 
@@ -49,14 +51,13 @@ lock, resolve afresh and write one, so don't use npm for installs.
   and reads only auth and registry settings from `.npmrc`. The file has no `packages:` field; the
   repo is a single package.
 - **Dependency install scripts are blocked.** pnpm 12 fails the install on any dependency with an
-  install script that `allowBuilds` doesn't list. The only one is `fsevents` (macOS only, from
-  webpack 1's watcher), set to `false`: chokidar falls back to `fs.watch` without it.
+  install script that `allowBuilds` doesn't list. No dependency has one today, so
+  `pnpm-workspace.yaml` has no `allowBuilds` key; a new dependency that needs a build step has to be
+  listed there on purpose.
 - **The layout is strict.** A package can only require what it declares. Every bare `require()` in
   `app.js`, `lib`, `routes`, `public/js`, `test`, `smoke` and `scripts` is declared in
-  `package.json`; keep it that way. The `json-loader` rule in `webpack.config.js` names a loader
-  that isn't installed (it wasn't under npm either); it is harmless only because nothing in the
-  bundle requires a `.json` file.
-- **webpack 1 follows pnpm's symlinks** to their real paths under `node_modules/.pnpm`, so the
+  `package.json`; keep it that way.
+- **webpack follows pnpm's symlinks** to their real paths under `node_modules/.pnpm`, so the
   bundle holds one copy each of jQuery and Backbone. Marionette 2.4.7 still gets its own underscore
   1.8.3, as it did under npm.
 - **Fresh releases wait a day.** pnpm 12's `minimumReleaseAge` defaults to 1440 minutes, so a
@@ -342,7 +343,7 @@ developer's machine.
 `@eslint/js` recommended plus `no-unused-vars: off` and `semi: always`). Three blocks: Node files
 (`lib`, `routes`, `scripts`, `smoke`, the root scripts and `config.js.example`, which has no `.js`
 extension and is matched by name), `test/` (adds the mocha globals), and `public/js` (`ecmaVersion`
-2015 because webpack 1 bundles it, browser globals plus the `ProvidePlugin` globals `_`, `$`,
+2015 (the bundled code is ES5-style), browser globals plus the `ProvidePlugin` globals `_`, `$`,
 `Backbone` and `jQuery`). `no-undef` is on everywhere, so a stray global fails the lint.
 
 ### CI

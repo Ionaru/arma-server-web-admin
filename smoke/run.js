@@ -437,6 +437,14 @@ checks.push({name: 'op-mode', run: async function (page) {
     }
 }});
 
+// An unrendered template shows up as literal {{placeholder}} text, e.g. when _.templateSettings is lost.
+var assertNoTemplateMarkers = async function (modal, label) {
+    var text = await modal.innerText({timeout: WAIT_TIMEOUT});
+    if (/\{\{|\}\}/.test(text)) {
+        throw new Error(label + ' shows unrendered template text: ' + JSON.stringify(text));
+    }
+};
+
 checks.push({name: 'add-server modal', run: async function (page) {
     var serverPosts = function () {
         return requests.filter(function (request) {
@@ -454,6 +462,7 @@ checks.push({name: 'add-server modal', run: async function (page) {
 
     await settle(page);
     await screenshot(page, 'add-server-modal');
+    await assertNoTemplateMarkers(modal, 'The add server modal');
 
     // Never .ok: that saves a new server.
     await modal.locator('a.btn.cancel').click({timeout: WAIT_TIMEOUT});
@@ -481,6 +490,7 @@ checks.push({name: 'settings modal', run: async function (page) {
 
     await settle(page);
     await screenshot(page, 'settings-modal');
+    await assertNoTemplateMarkers(modal, 'The settings modal');
 
     // This modal has no Cancel; OK only closes it.
     await modal.locator('a.btn.ok').click({timeout: WAIT_TIMEOUT});

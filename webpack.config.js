@@ -2,6 +2,12 @@ var path = require('path');
 var webpack = require('webpack');
 
 module.exports = {
+    mode: 'development',
+
+    // Loaders are resolved from here, not from the working directory (the panel may be started from
+    // anywhere, see "paths are relative to the working directory" in CLAUDE.md)
+    context: __dirname,
+
     // Entry point for static analyzer
     entry: path.join(__dirname, 'public', 'js', 'app.js'),
 
@@ -27,7 +33,10 @@ module.exports = {
 
     plugins: [
         new webpack.ProvidePlugin({
-            _: 'underscore',
+            // The CommonJS/UMD build on purpose: require('underscore') resolves to the ES module build in
+            // webpack 5, whose namespace object cannot be assigned to, and backbone.bootstrap-modal
+            // assigns _.templateSettings on the global _ while it builds its template.
+            _: 'underscore/underscore-umd.js',
             $: 'jquery',
             Backbone: 'backbone',
             jQuery: 'jquery'
@@ -35,20 +44,14 @@ module.exports = {
     ],
 
     module: {
-        loaders: [
-            {test: /\.css$/, loaders: ['style-loader', 'css-loader']},
-            {test: /\.html$/, loaders: ['raw-loader']},
-            {test: /\.json$/, loaders: ['json-loader']},
-            {test: /\.png$/, loader: 'url-loader?limit=8192&mimetype=image/png'},
-            {test: /\.jpe?g$/, loader: 'url-loader?limit=8192&mimetype=image/jpg'},
-            {test: /\.gif$/, loader: 'url-loader?limit=8192&mimetype=image/gif'},
-            {test: /\.svg(\?v=\d+\.\d+\.\d+)?$/, loader: 'url-loader?limit=8192&mimetype=image/svg+xml'},
-            {test: /\.woff2(\?v=\d+\.\d+\.\d+)?$/, loader: 'url-loader?limit=8192&mimetype=application/font-woff2'},
-            {test: /\.woff(\?v=\d+\.\d+\.\d+)?$/, loader: 'url-loader?limit=8192&mimetype=application/font-woff'},
-            {test: /\.ttf(\?v=\d+\.\d+\.\d+)?$/, loader: 'url-loader?limit=8192&mimetype=application/octet-stream'},
-            {test: /\.eot(\?v=\d+\.\d+\.\d+)?$/, loader: 'file-loader'}
+        rules: [
+            {test: /\.css$/, use: ['style-loader', 'css-loader']},
+            // The templates are required as plain text for _.template
+            {test: /\.html$/, type: 'asset/source'},
+            // Glyphicons fonts, emitted as files next to the bundle
+            {test: /\.(woff2?|ttf|eot|svg)$/, type: 'asset/resource'}
         ]
     },
 
-    devtool: '#inline-source-map'
+    devtool: 'inline-source-map'
 };
