@@ -3,7 +3,6 @@ var express = require('express');
 var fs = require('fs');
 var os = require('os');
 var path = require('path');
-var bodyParser = require('body-parser');
 var request = require('supertest');
 
 var Missions = require('../../lib/missions.js');
