@@ -20,7 +20,7 @@ The project is old and deliberately not modernised. Expect ES5-style `var` and p
 | Frontend | Backbone 1.3.3 + Marionette 2.4.7, Bootstrap 3, jQuery 3 |
 | Bundling | webpack 1, compiled **in memory** by `webpack-dev-middleware` (`app.js`) |
 | Process launcher | the `arma-server` package (0.0.10) actually spawns the game |
-| Status polling | `gamedig`, every 5s per running server |
+| Status polling | `gamedig` 5, every 5s per running server; a poll is skipped while the previous query for the same process is still in flight (a failing gamedig 5 query takes about 4 to 6 s for Arma 2/3, read from the gamedig source) |
 | Tests | mocha 12, `should`, supertest 7, timekeeper 2; a Playwright smoke run of the real UI (`smoke/`) |
 
 **There is no build step.** `pnpm start` is the whole story; webpack compiles the bundle on request.

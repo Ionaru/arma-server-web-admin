@@ -30,7 +30,7 @@
     "express-basic-auth": "^1.2.1",
     "file-loader": "0.10.0",
     "filesize": "^11.0.35",
-    "gamedig": "0.2.25",
+    "gamedig": "5.3.3",
     "jquery": "^3.8.0",
     "jquery.iframe-transport": "^1.0.0",
     "ladda": "1.0.5",

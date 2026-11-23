@@ -39,3 +39,39 @@ describe('public templates', function () {
         });
     });
 });
+
+describe('B7 players template', function () {
+    var tpl = fs.readFileSync(path.join(__dirname, '..', '..', 'public', 'js', 'tpl', 'servers', 'players.html'), 'utf8');
+
+    // Same data the Players view passes: the model's attributes plus a players() helper that
+    // sorts state.players by name (public/js/app/views/servers/players.js).
+    var render = function (state) {
+        return _.template(tpl)({
+            state: state,
+            players: function () {
+                return _.sortBy(state.players, function (player) {
+                    return player.name;
+                });
+            }
+        });
+    };
+
+    it('B7 should print names and scores read from player.raw.score', function () {
+        var html = render({
+            name: 'Op',
+            map: 'Altis',
+            maxplayers: 40,
+            players: [
+                {name: 'Alice', raw: {score: 12, time: 30}},
+                {name: 'Bob', raw: {score: 0, time: 5}}
+            ],
+            raw: {game: 'Co40 Op'}
+        });
+
+        html.should.containEql('Alice');
+        html.should.containEql('12');
+        html.should.containEql('Bob');
+        html.should.match(/<td>\s*0\s*<\/td>/);
+        html.should.not.containEql('undefined');
+    });
+});
