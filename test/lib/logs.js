@@ -1,6 +1,5 @@
 require('should');
 var crypto = require('crypto');
-var fsExtra = require('fs.extra');
 var fs = require('fs');
 var os = require('os');
 var path = require('path');
@@ -70,7 +69,7 @@ describe('Logs listing', function () {
 
     var write = function (relative, content) {
         var full = path.join(root, relative);
-        fsExtra.mkdirpSync(path.dirname(full));
+        fs.mkdirSync(path.dirname(full), {recursive: true});
         fs.writeFileSync(full, content === undefined ? 'content' : content);
         return full;
     };
@@ -94,11 +93,11 @@ describe('Logs listing', function () {
     beforeEach(function () {
         root = fs.mkdtempSync(path.join(os.tmpdir(), 'logs-listing-'));
         armaPath = path.join(root, 'arma');
-        fsExtra.mkdirpSync(path.join(armaPath, 'logs'));
+        fs.mkdirSync(path.join(armaPath, 'logs'), {recursive: true});
     });
 
     afterEach(function () {
-        fsExtra.rmrfSync(root);
+        fs.rmSync(root, {recursive: true, force: true});
     });
 
     describe('logDirectories() (B1, B2)', function () {
@@ -226,7 +225,7 @@ describe('Logs listing', function () {
             } else {
                 process.env.HOME = origHome;
             }
-            fsExtra.rmrfSync(home);
+            fs.rmSync(home, {recursive: true, force: true});
         });
 
         var dirsFor = function (parameters) {
@@ -268,7 +267,7 @@ describe('Logs listing', function () {
 
         it('R2: should list files of a mapped folder and its HC_<n> subfolders', function (done) {
             var mapped = path.join(home, '.wine', 'dosdevices', 'c:', 'Arma', 'P');
-            fsExtra.mkdirpSync(path.join(mapped, 'HC_0'));
+            fs.mkdirSync(path.join(mapped, 'HC_0'), {recursive: true});
             fs.writeFileSync(path.join(mapped, 'a.rpt'), 'x');
             fs.writeFileSync(path.join(mapped, 'HC_0', 'b.rpt'), 'x');
 
@@ -323,7 +322,7 @@ describe('Logs listing', function () {
             write('p/a/HC_0/notes.txt');
             write('p/a/HC_12/hc12.log');
             write('p/a/HC_x/nonnumeric.rpt');
-            fsExtra.mkdirpSync(path.join(a, 'dir.rpt'));
+            fs.mkdirSync(path.join(a, 'dir.rpt'), {recursive: true});
 
             listProfiles([fakeServer('A', ['-profiles=' + a])], function (err, files) {
                 if (err) {
@@ -358,7 +357,7 @@ describe('Logs listing', function () {
                 fakeServer('A', ['-profiles=' + path.join(root, 'p', 'a')]),
                 fakeServer('B', ['-profiles=' + path.join(root, 'missing')])
             ];
-            fsExtra.rmrfSync(path.join(armaPath, 'logs'));
+            fs.rmSync(path.join(armaPath, 'logs'), {recursive: true, force: true});
 
             listProfiles(servers, function (err, files) {
                 if (err) {
@@ -401,7 +400,7 @@ describe('Logs listing', function () {
                 file.name.should.eql('x.rpt');
                 file.path.should.eql(full);
                 file.size.should.eql(5);
-                file.formattedSize.should.eql(require('filesize')(5));
+                file.formattedSize.should.eql('5 B');
                 file.servers.should.eql(['A', 'B']);
 
                 var hc = byName(files, 'h.rpt');
@@ -729,5 +728,45 @@ describe('Logs listing', function () {
                 done();
             });
         });
+    });
+});
+
+describe('Logs constructor log folder (B5)', function () {
+    var tmp;
+
+    beforeEach(function () {
+        tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'logs-ctor-'));
+    });
+
+    afterEach(function () {
+        fs.rmSync(tmp, {recursive: true, force: true});
+    });
+
+    it('B5: should create the logs folder asynchronously on linux', function (done) {
+        var logs = new Logs({path: tmp, type: 'linux', game: 'arma3'});
+        var target = logs.logsPath();
+        var started = Date.now();
+
+        (function poll() {
+            if (fs.existsSync(target)) {
+                fs.statSync(target).isDirectory().should.be.true();
+                return done();
+            }
+
+            if (Date.now() - started > 1000) {
+                return done(new Error('logs folder ' + target + ' was not created within 1 s'));
+            }
+
+            setTimeout(poll, 10);
+        })();
+    });
+
+    it('B5: should create nothing under the path on windows', function (done) {
+        new Logs({path: tmp, type: 'windows', game: 'arma3'});
+
+        setTimeout(function () {
+            fs.readdirSync(tmp).should.eql([]);
+            done();
+        }, 100);
     });
 });
