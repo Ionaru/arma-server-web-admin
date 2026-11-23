@@ -1,7 +1,13 @@
 var express = require('express');
 
+var Server = require('../lib/server');
+
 function hasTitle(body) {
     return !!body && typeof body.title === 'string' && body.title.length > 0;
+}
+
+function hasIdChars(body) {
+    return Server.idFromTitle(body.title) !== '';
 }
 
 module.exports = function (manager, mods) {
@@ -16,6 +22,10 @@ module.exports = function (manager, mods) {
             return res.status(400).json({error: 'title is required'});
         }
 
+        if (!hasIdChars(req.body)) {
+            return res.status(400).json({error: 'title must contain letters or digits'});
+        }
+
         var server = manager.addServer(req.body);
         res.json(server);
     });
@@ -28,6 +38,10 @@ module.exports = function (manager, mods) {
     router.put('/:server', function (req, res) {
         if (!hasTitle(req.body)) {
             return res.status(400).json({error: 'title is required'});
+        }
+
+        if (!hasIdChars(req.body)) {
+            return res.status(400).json({error: 'title must contain letters or digits'});
         }
 
         var server = manager.getServer(req.params.server);

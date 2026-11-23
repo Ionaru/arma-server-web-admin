@@ -7,6 +7,28 @@ var path = require('path');
 var Server = require('../../lib/server.js');
 
 describe('Server', function () {
+    describe('B1: idFromTitle()', function () {
+        var slugify = require('slugify');
+
+        ['Ops', '[7R] Ops #1', 'Server 1.2', '   ', '???', '-'].forEach(function (title) {
+            it('B1: matches slugify with dots replaced for ' + JSON.stringify(title), function () {
+                Server.idFromTitle(title).should.eql(slugify(title).replace(/\./g, '-'));
+            });
+        });
+
+        ['   ', '???', '-'].forEach(function (title) {
+            it('B1: is empty for ' + JSON.stringify(title), function () {
+                Server.idFromTitle(title).should.eql('');
+            });
+        });
+
+        it('B1: a server titled "Server 1.2" keeps the id "Server-1-2"', function () {
+            var server = new Server(null, null, {title: 'Server 1.2'});
+            server.id.should.eql('Server-1-2');
+            server.generateId().should.eql('Server-1-2');
+        });
+    });
+
     describe('generateId()', function () {
         it('should include title', function () {
             var server = new Server(null, null, {title: 'title.with.lot.of.dots'});
