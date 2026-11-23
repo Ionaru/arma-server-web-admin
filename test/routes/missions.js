@@ -3,7 +3,6 @@ var express = require('express');
 var fs = require('fs');
 var os = require('os');
 var path = require('path');
-var bodyParser = require('body-parser');
 var request = require('supertest');
 
 var Missions = require('../../lib/missions.js');
@@ -294,74 +293,6 @@ describe('routes/missions download (B2-B3)', function () {
 
                 res.status.should.eql(403);
                 (res.text || '').should.not.containEql('TOP-SECRET');
-                done();
-            });
-    });
-});
-
-describe('routes/missions workshop (B8)', function () {
-    var calls;
-    var app;
-
-    beforeEach(function () {
-        calls = [];
-        var manager = {
-            missions: [],
-            downloadSteamWorkshop: function (id, cb) {
-                calls.push(id);
-                cb();
-            }
-        };
-
-        app = express();
-        app.set('env', 'test');
-        app.use(bodyParser.json());
-        app.use('/api/missions', missionsRoute(manager));
-    });
-
-    it('B8a: POST /workshop without a body is 400 and downloads nothing', function (done) {
-        request(app)
-            .post('/api/missions/workshop')
-            .end(function (err, res) {
-                if (err) {
-                    return done(err);
-                }
-
-                res.status.should.eql(400);
-                res.body.should.eql({error: 'id is required'});
-                calls.should.eql([]);
-                done();
-            });
-    });
-
-    it('B8a: POST /workshop with {} is 400 and downloads nothing', function (done) {
-        request(app)
-            .post('/api/missions/workshop')
-            .send({})
-            .end(function (err, res) {
-                if (err) {
-                    return done(err);
-                }
-
-                res.status.should.eql(400);
-                res.body.should.eql({error: 'id is required'});
-                calls.should.eql([]);
-                done();
-            });
-    });
-
-    it('B8b: POST /workshop with an id downloads it once', function (done) {
-        request(app)
-            .post('/api/missions/workshop')
-            .send({id: '123456789'})
-            .end(function (err, res) {
-                if (err) {
-                    return done(err);
-                }
-
-                res.status.should.eql(200);
-                res.body.should.eql({success: true});
-                calls.should.eql(['123456789']);
                 done();
             });
     });

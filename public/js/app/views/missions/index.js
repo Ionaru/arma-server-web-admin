@@ -3,7 +3,6 @@ var _ = require('underscore');
 var Marionette = require('marionette');
 
 var UploadView = require('app/views/missions/upload');
-var WorkshopView = require('app/views/missions/workshop');
 var ListView = require('app/views/missions/list');
 var tpl = require('tpl/missions/index.html');
 
@@ -17,7 +16,6 @@ module.exports = Marionette.LayoutView.extend({
 
     regions: {
         uploadView: '#upload',
-        workshopView: '#workshop',
         listView: '#list'
     },
 
@@ -38,7 +36,6 @@ module.exports = Marionette.LayoutView.extend({
 
     onRender: function () {
         this.uploadView.show(new UploadView());
-        this.workshopView.show(new WorkshopView());
         this.listView.show(new ListView({collection: this.options.missions, filterValue: this.filterValue}));
     },
 
