@@ -153,6 +153,8 @@ have made both jobs worse. It has its own module and its own file instead.
 `Backbone.history.start()` is deliberately deferred until the first `servers` event arrives
 (`public/js/app/router.js`), so nothing renders before there is data.
 
+## Frontend views and templates
+
 `public/js/app/dialogs.js` is the only place dialogs are created: views call `dialogs.alert` and
 `dialogs.confirm` (a confirm's callback runs only on Confirm), never sweetalert2 directly.
 `public/css/styles.css` sets `.swal2-popup { font-size: 1.6rem; }` because Bootstrap 3 sets `html`
