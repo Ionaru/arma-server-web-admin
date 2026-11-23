@@ -38,7 +38,8 @@ module.exports = function (missionsManager) {
     router.get('/:mission', function (req, res) {
         var filename = req.params.mission;
 
-        res.download(missionsManager.missionPath(filename), decodeURI(filename));
+        // relative to the missions folder: keeps the name inside it, and a dot-directory above it no longer matters
+        res.download(filename, decodeURI(filename), {root: missionsManager.missionsPath()});
     });
 
     router.delete('/:mission', function (req, res) {
@@ -59,7 +60,11 @@ module.exports = function (missionsManager) {
     });
 
     router.post('/workshop', function (req, res) {
-        var id = req.body.id;
+        var id = req.body && req.body.id;
+
+        if (!id) {
+            return res.status(400).json({error: 'id is required'});
+        }
 
         missionsManager.downloadSteamWorkshop(id, function (err) {
             if (err) {

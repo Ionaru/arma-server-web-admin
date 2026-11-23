@@ -34,7 +34,8 @@ module.exports = function (logsManager) {
             } else {
                 if (file) {
                     if (mode === 'download') {
-                        res.download(file.path);
+                        // file.path comes from the log listing (getLogFile); Express 5 refuses any dot-directory in it otherwise (wine)
+                        res.download(file.path, {dotfiles: 'allow'});
                     } else {
                         logsManager.readLogFile(file.path, function (err, data) {
                             if (err) {

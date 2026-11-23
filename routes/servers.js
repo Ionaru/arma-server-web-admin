@@ -1,5 +1,9 @@
 var express = require('express');
 
+function hasTitle(body) {
+    return !!body && typeof body.title === 'string' && body.title.length > 0;
+}
+
 module.exports = function (manager, mods) {
     var router = express.Router();
 
@@ -8,6 +12,10 @@ module.exports = function (manager, mods) {
     });
 
     router.post('/', function (req, res) {
+        if (!hasTitle(req.body)) {
+            return res.status(400).json({error: 'title is required'});
+        }
+
         var server = manager.addServer(req.body);
         res.json(server);
     });
@@ -18,6 +26,10 @@ module.exports = function (manager, mods) {
     });
 
     router.put('/:server', function (req, res) {
+        if (!hasTitle(req.body)) {
+            return res.status(400).json({error: 'title is required'});
+        }
+
         var server = manager.getServer(req.params.server);
         server.update(req.body);
         manager.save();
