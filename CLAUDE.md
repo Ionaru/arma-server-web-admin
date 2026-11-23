@@ -144,6 +144,10 @@ have made both jobs worse. It has its own module and its own file instead.
 - **socket.io pushes reads.** Events: `missions`, `mods`, `op-mode`, `servers`, `settings`. All five
   are emitted on connection, but only the first four are re-emitted on change: `settings` is a
   read-only projection of `config.js`, which never changes at runtime, so nothing re-emits it.
+- **The socket handshake checks the same credentials** as the Express basic auth, through
+  `allowRequest` in `app.js` and `setupBasicAuth.isAuthorized`: engine.io answers `/socket.io/`
+  on the `http.Server` before Express runs, so the middleware never sees it. Only the handshake is
+  checked (later requests carry the session's `sid`); `/socket.io/socket.io.js` stays public.
 - **REST handles writes**, under `/api/*`.
 
 `Backbone.history.start()` is deliberately deferred until the first `servers` event arrives
