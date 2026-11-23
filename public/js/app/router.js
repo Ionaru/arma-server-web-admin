@@ -36,7 +36,7 @@ module.exports = Backbone.Router.extend({
     },
 
     initialize: function () {
-        layoutView.navigation.show(new NavigationView({settings: settings, servers: servers}));
+        layoutView.showChildView('navigation', new NavigationView({settings: settings, servers: servers}));
 
         var initialized = false;
 
@@ -65,31 +65,31 @@ module.exports = Backbone.Router.extend({
     },
 
     home: function () {
-        layoutView.content.show(new ServersView({collection: servers}));
+        layoutView.showChildView('content', new ServersView({collection: servers}));
     },
 
     logs: function () {
         var logs = new Logs();
         logs.fetch();
-        layoutView.content.show(new LogsListView({collection: logs}));
+        layoutView.showChildView('content', new LogsListView({collection: logs}));
     },
 
     missions: function () {
-        layoutView.content.show(new MissionsView({missions: missions}));
+        layoutView.showChildView('content', new MissionsView({missions: missions}));
     },
 
     mods: function () {
-        layoutView.content.show(new ModsListView({collection: mods}));
+        layoutView.showChildView('content', new ModsListView({collection: mods}));
     },
 
     opMode: function () {
-        layoutView.content.show(new OpModeView({model: opMode, servers: servers, settings: settings}));
+        layoutView.showChildView('content', new OpModeView({model: opMode, servers: servers, settings: settings}));
     },
 
     server: function (id) {
         var server = servers.get(id);
         if (server) {
-            layoutView.content.show(new ServerView({
+            layoutView.showChildView('content', new ServerView({
                 model: server,
                 missions: missions,
                 mods: mods

@@ -7,10 +7,10 @@ var ServersListView = require('app/views/navigation/servers/list');
 var SettingsView = require('app/views/settings');
 var tpl = require('tpl/navigation.html');
 
-module.exports = Marionette.ItemView.extend({
+module.exports = Marionette.View.extend({
     template: _.template(tpl),
 
-    templateHelpers: function () {
+    templateContext: function () {
         return {
             isActiveRoute: function (route) {
                 return Backbone.history.fragment === route ? 'active' : '';
@@ -26,7 +26,7 @@ module.exports = Marionette.ItemView.extend({
         this.settings = options.settings;
         this.servers = options.servers;
         this.serversListView = new ServersListView({collection: this.servers});
-        Backbone.history.on('route', this.render);
+        this.listenTo(Backbone.history, 'route', this.render);
     },
 
     onDomRefresh: function () {

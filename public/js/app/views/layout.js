@@ -3,7 +3,7 @@ var Marionette = require('marionette');
 
 var tpl = require('tpl/layout.html');
 
-module.exports = Marionette.LayoutView.extend({
+module.exports = Marionette.View.extend({
     template: _.template(tpl),
 
     regions: {

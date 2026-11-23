@@ -3,14 +3,14 @@ var Marionette = require('marionette');
 
 var tpl = require('tpl/settings.html');
 
-module.exports = Marionette.ItemView.extend({
+module.exports = Marionette.View.extend({
     template: _.template(tpl),
 
     modelEvents: {
         change: 'render'
     },
 
-    templateHelpers: {
+    templateContext: {
         isTypeChecked: function (type) {
             return this.type === type ? 'checked' : '';
         }

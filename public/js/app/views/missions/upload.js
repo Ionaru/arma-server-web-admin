@@ -5,7 +5,7 @@ var Ladda = require('ladda');
 
 var tpl = require('tpl/missions/upload.html');
 
-module.exports = Marionette.ItemView.extend({
+module.exports = Marionette.View.extend({
     template: _.template(tpl),
 
     events: {
@@ -36,7 +36,7 @@ module.exports = Marionette.ItemView.extend({
             dataType: 'json',
             success: function (data) {
                 laddaBtn.stop();
-                if (!self.isDestroyed) {
+                if (!self.isDestroyed()) {
                     self.render();
                 }
             },

@@ -5,7 +5,7 @@ var tpl = require('tpl/servers/missions/available/list_item.html');
 
 var template = _.template(tpl);
 
-module.exports = Marionette.ItemView.extend({
+module.exports = Marionette.View.extend({
     tagName: 'tr',
     template: template,
 

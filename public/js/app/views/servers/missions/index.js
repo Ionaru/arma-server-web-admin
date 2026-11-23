@@ -6,9 +6,9 @@ var AvailableListView = require('app/views/servers/missions/available/list');
 var RotationListView = require('app/views/servers/missions/rotation/list');
 var tpl = require('tpl/servers/missions/index.html');
 
-module.exports = Marionette.LayoutView.extend({
+module.exports = Marionette.View.extend({
     template: _.template(tpl),
-    templateHelpers: function () {
+    templateContext: function () {
         return {
             filterValue: this.filterValue
         };
@@ -45,14 +45,14 @@ module.exports = Marionette.LayoutView.extend({
     },
 
     onRender: function () {
-        this.availableView.show(this.availableListView);
-        this.rotationView.show(this.rotationListView);
+        this.showChildView('availableView', this.availableListView);
+        this.showChildView('rotationView', this.rotationListView);
     },
 
     updateFilter: function (event) {
         this.filterValue = event.target.value;
-        this.availableView.currentView.filterValue = this.filterValue;
-        this.availableView.currentView.render();
+        this.availableListView.filterValue = this.filterValue;
+        this.availableListView.filter();
     },
 
     serverUpdated: function () {

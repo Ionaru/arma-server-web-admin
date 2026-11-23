@@ -21,7 +21,7 @@ var errorText = function (err) {
     return 'An error occurred, please consult the logs';
 };
 
-module.exports = Marionette.ItemView.extend({
+module.exports = Marionette.View.extend({
     template: _.template(tpl),
 
     modelEvents: {
@@ -65,7 +65,7 @@ module.exports = Marionette.ItemView.extend({
         this.render();
     },
 
-    templateHelpers: function () {
+    templateContext: function () {
         var model = this.model;
         var settings = this.settings;
 
@@ -160,7 +160,7 @@ module.exports = Marionette.ItemView.extend({
             isBusy: function () {
                 return !!self.testing;
             },
-            // this.testing is the source of truth (not the DOM): templateHelpers reads it, so a
+            // this.testing is the source of truth (not the DOM): templateContext reads it, so a
             // socket-driven re-render mid-request keeps the button disabled rather than rendering a
             // fresh enabled one. Re-query the button rather than caching a node, since a re-render
             // replaces it.

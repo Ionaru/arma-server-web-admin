@@ -1,13 +1,13 @@
 var $ = require('jquery');
 var _ = require('underscore');
-var Marionette = require('marionette');
+var CollectionView = require('app/views/collection-view');
 
 var ListItemView = require('app/views/mods/list_item');
 var tpl = require('tpl/mods/list.html');
 
 var template = _.template(tpl);
 
-module.exports = Marionette.CompositeView.extend({
+module.exports = CollectionView.extend({
     childView: ListItemView,
     childViewContainer: 'tbody',
     template: template,

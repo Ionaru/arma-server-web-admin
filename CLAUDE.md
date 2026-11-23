@@ -17,7 +17,7 @@ The project is old and deliberately not modernised. Expect ES5-style `var` and p
 | Runtime | Node. Production runs Node 26. `engines` in `package.json` is `^20.19.0 || ^22.13.0 || >=24` (the eslint 10 and mocha 12 floor). CI runs Node 26 on GitHub Actions (`.github/workflows/ci.yml`). |
 | Package manager | pnpm 12 (needs Node >= 18), pinned by `packageManager` in `package.json`; see *Dependencies: pnpm* |
 | Server | Express 5, socket.io 4 |
-| Frontend | Backbone 1.3.3 + Marionette 2.4.7, Bootstrap 3, jQuery 3, sweetalert2 11, Ladda 2 |
+| Frontend | Backbone 1.6.1 + Marionette 4.1.3, Bootstrap 3, jQuery 3, sweetalert2 11, Ladda 2 |
 | Bundling | webpack 5 (development mode), compiled **in memory** by `webpack-dev-middleware` (`app.js`) |
 | Process launcher | the `arma-server` package (0.0.10) actually spawns the game |
 | Status polling | `gamedig` 5, every 5s per running server; a poll is skipped while the previous query for the same process is still in flight (a failing gamedig 5 query takes about 4 to 6 s for Arma 2/3, read from the gamedig source) |
@@ -58,8 +58,7 @@ lock, resolve afresh and write one, so don't use npm for installs.
   `app.js`, `lib`, `routes`, `public/js`, `test`, `smoke` and `scripts` is declared in
   `package.json`; keep it that way.
 - **webpack follows pnpm's symlinks** to their real paths under `node_modules/.pnpm`, so the
-  bundle holds one copy each of jQuery and Backbone. Marionette 2.4.7 still gets its own underscore
-  1.8.3, as it did under npm.
+  bundle holds one copy each of jQuery and Backbone, and one underscore version (1.13.8).
 - **Two underscore instances in the bundle.** Under webpack 5, `require('underscore')` resolves
   through the package's `module` export condition to the ES module build (`modules/index-all.js`),
   which webpack exposes as a namespace object with getter-only properties. The ProvidePlugin global
@@ -174,6 +173,19 @@ to 10px while sweetalert2 sizes from `1rem`; recheck or drop it whenever the roo
 Templates print data with `<%- %>` (escaped): player, server and mission names come from the game
 query and can hold markup. `<%= %>` is only for markup the code builds itself (the remaining
 `navigation.html` and `servers/form.html` sites).
+
+Marionette 4 traps when porting upstream (Marionette 2) code: `filter` is a method, so a `filter:`
+key on a collection view makes `render()` throw (use `viewFilter(view)`, which gets the child view);
+`isDestroyed()` and `isRendered()` are methods (the bare property is always truthy); `render` is not
+bound (use `listenTo`); region properties are gone (`showChildView` / `getChildView`); and
+`templateHelpers` is silently ignored (use `templateContext`).
+Marionette 4 also re-attaches every child on each collection `update`, and Backbone 1.6.1 fires
+`update` on every merging `set()` (the socket pushes), which would drop focus and text selection in
+the lists; every list view therefore extends `app/views/collection-view.js`, which skips updates that
+add, remove and reorder nothing.
+`test/public/marionette-4-api.js` scans for the three Marionette 2 base classes, `templateHelpers`,
+a `filter:` key, uncalled `isDestroyed`/`isRendered`/`isAttached`, and list views not extending
+`app/views/collection-view.js`.
 
 ## EventEmitter: use util.inherits
 
@@ -374,6 +386,12 @@ pnpm run smoke         # starts the real app and clicks through every page in he
   no allowlist on purpose: fix the cause instead of filtering the message.
 - It also fails when the Add server or Settings modal shows literal `{{` or `}}` text, which means
   an unrendered backbone.bootstrap-modal template (`assertNoTemplateMarkers` in `smoke/run.js`).
+- It also pins the Marionette 4 behaviours that break silently: the nav's active tab and the server
+  dropdown following the route, both missions filters, all six regions of the server page
+  rendering, a socket push re-rendering the lists, and a push that changes one server leaving the
+  other rows and the keyboard focus alone. The state-changing checks (add a rotation mission, save a
+  server, add a server through the modal, a pushed server, that push check, the empty server list)
+  run last.
 - The config cannot be swapped by changing the working directory: `app.js` and `lib/server.js`
   resolve `config.js` against the repo. `smoke/config-shim.js` (loaded with `node --require`)
   redirects both requires to the temp config, so a developer's real `config.js` is never read or

@@ -1,10 +1,10 @@
 var _ = require('underscore');
-var Marionette = require('marionette');
+var CollectionView = require('app/views/collection-view');
 
 var ListItemView = require('app/views/servers/missions/available/list_item');
 var tpl = require('tpl/servers/missions/available/list.html');
 
-module.exports = Marionette.CompositeView.extend({
+module.exports = CollectionView.extend({
     childView: ListItemView,
     childViewContainer: 'tbody',
     template: _.template(tpl),
@@ -13,8 +13,8 @@ module.exports = Marionette.CompositeView.extend({
         this.filterValue = options.filterValue;
     },
 
-    filter: function (child, index, collection) {
-        return child.get('name').toLowerCase().indexOf(this.filterValue.toLowerCase()) >= 0;
+    viewFilter: function (view) {
+        return view.model.get('name').toLowerCase().indexOf(this.filterValue.toLowerCase()) >= 0;
     },
 
     buildChildView: function (item, ChildViewType, childViewOptions) {

@@ -6,9 +6,9 @@ var UploadView = require('app/views/missions/upload');
 var ListView = require('app/views/missions/list');
 var tpl = require('tpl/missions/index.html');
 
-module.exports = Marionette.LayoutView.extend({
+module.exports = Marionette.View.extend({
     template: _.template(tpl),
-    templateHelpers: function () {
+    templateContext: function () {
         return {
             filterValue: this.filterValue
         };
@@ -30,13 +30,14 @@ module.exports = Marionette.LayoutView.extend({
 
     updateFilter: function (event) {
         this.filterValue = event.target.value;
-        this.listView.currentView.filterValue = this.filterValue;
-        this.listView.currentView.render();
+        var listView = this.getChildView('listView');
+        listView.filterValue = this.filterValue;
+        listView.filter();
     },
 
     onRender: function () {
-        this.uploadView.show(new UploadView());
-        this.listView.show(new ListView({collection: this.options.missions, filterValue: this.filterValue}));
+        this.showChildView('uploadView', new UploadView());
+        this.showChildView('listView', new ListView({collection: this.options.missions, filterValue: this.filterValue}));
     },
 
     refresh: function (event) {

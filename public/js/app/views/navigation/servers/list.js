@@ -1,8 +1,8 @@
-var Marionette = require('marionette');
+var CollectionView = require('app/views/collection-view');
 
 var ListItemView = require('app/views/navigation/servers/list_item');
 
-module.exports = Marionette.CollectionView.extend({
+module.exports = CollectionView.extend({
     tagName: 'ul',
     childView: ListItemView
 });
