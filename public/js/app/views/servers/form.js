@@ -5,7 +5,7 @@ var dialogs = require('app/dialogs');
 
 var tpl = require('tpl/servers/form.html');
 
-module.exports = Marionette.ItemView.extend({
+module.exports = Marionette.View.extend({
     template: _.template(tpl),
 
     initialize: function (options) {

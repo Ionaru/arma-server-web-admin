@@ -9,7 +9,7 @@ module.exports = ModListItemView.extend({
     tagName: 'tr',
     template: template,
 
-    templateHelpers: function () {
+    templateContext: function () {
         return {
             enabled: this.options.server.get('mods').indexOf(this.model.get('name')) > -1
         };

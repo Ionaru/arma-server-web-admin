@@ -6,7 +6,7 @@ var tpl = require('tpl/logs/list_item.html');
 
 var template = _.template(tpl);
 
-module.exports = Marionette.ItemView.extend({
+module.exports = Marionette.View.extend({
     tagName: 'tr',
     template: template,
 
@@ -14,7 +14,7 @@ module.exports = Marionette.ItemView.extend({
         'click .destroy': 'deleteLog'
     },
 
-    templateHelpers: function () {
+    templateContext: function () {
         var role = this.model.get('role');
         var roleLabel = role;
         var roleClass = 'label-info';

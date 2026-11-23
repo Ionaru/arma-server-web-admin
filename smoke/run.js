@@ -5,7 +5,7 @@
 //   node smoke/run.js
 //
 // Environment: SMOKE_SCREENSHOTS=<dir> saves PNGs, SMOKE_KEEP=1 keeps the temp directory.
-/* global window, document, getComputedStyle -- used inside page.evaluate callbacks, which run in the browser */
+/* global window, document, getComputedStyle, MutationObserver -- used inside page.evaluate callbacks, which run in the browser */
 var childProcess = require('child_process');
 var fs = require('fs');
 var http = require('http');
@@ -17,7 +17,7 @@ var playwright = require('@playwright/test');
 
 var repoRoot = path.resolve(__dirname, '..');
 
-var CHECK_COUNT = 10;
+var CHECK_COUNT = 21;
 var WAIT_TIMEOUT = 15 * 1000;
 var FIRST_LOAD_TIMEOUT = 60 * 1000;
 var HOME_READY_DEADLINE = 60 * 1000;
@@ -66,6 +66,32 @@ var findFreePort = function () {
     });
 };
 
+// Every field Server.prototype.update reads, so loading and rendering log no error. The checks that
+// create a server through the API send the same shape.
+var serverFixture = function (title) {
+    return {
+        additionalConfigurationOptions: '',
+        admin_password: '',
+        allowed_file_patching: 1,
+        auto_start: false,
+        battle_eye: false,
+        file_patching: false,
+        forcedDifficulty: '',
+        max_players: 32,
+        missions: [],
+        mods: [],
+        motd: '',
+        number_of_headless_clients: 0,
+        parameters: [],
+        password: '',
+        persistent: false,
+        port: 2302,
+        title: title,
+        von: false,
+        verify_signatures: false
+    };
+};
+
 var createEnvironment = async function () {
     root = fs.mkdtempSync(path.join(os.tmpdir(), 'arma-smoke-'));
 
@@ -96,28 +122,7 @@ var createEnvironment = async function () {
     var configPath = path.join(root, 'config.js');
     fs.writeFileSync(configPath, 'module.exports = ' + JSON.stringify(config, null, 2) + ';\n');
 
-    // Every field Server.prototype.update reads, so loading and rendering log no error.
-    var servers = [{
-        additionalConfigurationOptions: '',
-        admin_password: '',
-        allowed_file_patching: 1,
-        auto_start: false,
-        battle_eye: false,
-        file_patching: false,
-        forcedDifficulty: '',
-        max_players: 32,
-        missions: [],
-        mods: [],
-        motd: '',
-        number_of_headless_clients: 0,
-        parameters: [],
-        password: '',
-        persistent: false,
-        port: 2302,
-        title: 'Smoke Server',
-        von: false,
-        verify_signatures: false
-    }];
+    var servers = [serverFixture('Smoke Server')];
 
     fs.writeFileSync(path.join(work, 'servers.json'), JSON.stringify(servers, null, 2));
     fs.writeFileSync(path.join(work, 'op-mode.json'), JSON.stringify({
@@ -293,6 +298,103 @@ var clickNav = async function (page, selector, hash) {
     }
 };
 
+// Polls a locator's count until `matches(count)` is true. Resolves with the count; throws with
+// `label` and the last count seen on timeout.
+var waitForCount = async function (locator, matches, label) {
+    var end = Date.now() + WAIT_TIMEOUT;
+    var count = await locator.count();
+
+    while (!matches(count)) {
+        if (Date.now() > end) {
+            throw new Error(label + ' (found ' + count + ')');
+        }
+
+        await sleep(100);
+        count = await locator.count();
+    }
+
+    return count;
+};
+
+// Goes to the dashboard and opens the smoke server's page through its link, so the server view is
+// always a fresh one wherever the previous check left the page.
+var openServer = async function (page, state) {
+    if (!state.serverHref) {
+        throw new Error('no server link was found by the home check');
+    }
+
+    await page.locator('#navigation a#dashboard').click({timeout: WAIT_TIMEOUT});
+
+    var link = page.locator('#content a[href="' + state.serverHref + '"]');
+    await link.waitFor({state: 'visible', timeout: WAIT_TIMEOUT});
+    await link.click({timeout: WAIT_TIMEOUT});
+    await page.locator('#content h2').filter({hasText: 'Smoke Server'}).waitFor({state: 'visible', timeout: WAIT_TIMEOUT});
+};
+
+var openTab = async function (page, tab) {
+    await page.locator('ul.nav-tabs a[href="#tab-' + tab + '"]').click({timeout: WAIT_TIMEOUT});
+    await page.locator('#tab-' + tab).waitFor({state: 'visible', timeout: WAIT_TIMEOUT});
+};
+
+// Types into a filter input (the handlers listen to keyup, which fill() alone does not fire) and
+// checks the table narrows without the input being re-rendered: it must keep its value.
+var assertFilter = async function (page, label, inputSelector, rowsSelector) {
+    var input = page.locator(inputSelector);
+    var rows = page.locator(rowsSelector);
+
+    await input.waitFor({state: 'visible', timeout: WAIT_TIMEOUT});
+    await rows.first().waitFor({state: 'attached', timeout: WAIT_TIMEOUT});
+
+    var total = await rows.count();
+
+    if (total < 1) {
+        throw new Error(label + ': expected at least 1 row before filtering');
+    }
+
+    var expectValue = async function (step, expected) {
+        var actual = await input.inputValue({timeout: WAIT_TIMEOUT});
+
+        if (actual !== expected) {
+            throw new Error(label + ': after ' + step + ' the filter input holds "' + actual + '", expected "' + expected + '"');
+        }
+    };
+
+    var clear = async function () {
+        await input.fill('');
+        await input.press('End');
+    };
+
+    await input.pressSequentially('zzz-no-match');
+    await waitForCount(rows, function (count) { return count === 0; }, label + ': typing zzz-no-match did not empty the list');
+    await expectValue('typing zzz-no-match', 'zzz-no-match');
+
+    await clear();
+    await waitForCount(rows, function (count) { return count === total; }, label + ': clearing the filter did not bring back ' + total + ' row(s)');
+    await expectValue('clearing the filter', '');
+
+    await input.pressSequentially('SMOKE');
+    await waitForCount(rows, function (count) { return count >= 1; }, label + ': typing SMOKE left no row');
+
+    var end = Date.now() + WAIT_TIMEOUT;
+    var texts = await rows.allTextContents();
+
+    while (!texts.every(function (text) { return text.toLowerCase().indexOf('smoke') !== -1; })) {
+        if (Date.now() > end) {
+            throw new Error(label + ': after typing SMOKE a row does not contain "smoke": ' + JSON.stringify(texts));
+        }
+
+        await sleep(100);
+        texts = await rows.allTextContents();
+    }
+
+    await expectValue('typing SMOKE', 'SMOKE');
+
+    // Leave the page as found: empty filter, nothing focused.
+    await clear();
+    await waitForCount(rows, function (count) { return count === total; }, label + ': clearing the filter again did not bring back ' + total + ' row(s)');
+    await input.evaluate(function (element) { element.blur(); });
+};
+
 var checks = [];
 
 checks.push({name: 'home', run: async function (page, state) {
@@ -378,10 +480,101 @@ checks.push({name: 'server', run: async function (page, state) {
     }
 }});
 
+
+// B2: the navbar Servers dropdown lists the servers and marks the open one.
+checks.push({name: 'server dropdown', run: async function (page, state) {
+    await openServer(page, state);
+
+    var items = page.locator('#servers-list > li');
+    await items.first().waitFor({state: 'attached', timeout: WAIT_TIMEOUT});
+
+    var count = await items.count();
+
+    if (count !== 1) {
+        throw new Error('expected 1 item in the servers dropdown, found ' + count);
+    }
+
+    var text = (await items.first().locator('a').textContent({timeout: WAIT_TIMEOUT})).trim();
+
+    if (text !== 'Smoke Server') {
+        throw new Error('the servers dropdown item text is "' + text + '"');
+    }
+
+    var active = page.locator('#servers-list > li.active > a');
+    await active.waitFor({state: 'attached', timeout: WAIT_TIMEOUT});
+
+    var href = await active.getAttribute('href');
+
+    if (href !== state.serverHref) {
+        throw new Error('the active dropdown item links to "' + href + '", expected "' + state.serverHref + '"');
+    }
+}});
+
+// B5: every region of the server page renders its content.
+checks.push({name: 'server regions', run: async function (page, state) {
+    await openServer(page, state);
+
+    await openTab(page, 'info');
+
+    var info = page.locator('#tab-info');
+    var infoText = await info.innerText({timeout: WAIT_TIMEOUT});
+
+    if (infoText.indexOf('Offline') === -1) {
+        throw new Error('the Info tab does not show Offline: ' + JSON.stringify(infoText));
+    }
+
+    await info.locator('a#start').waitFor({state: 'visible', timeout: WAIT_TIMEOUT});
+
+    await openTab(page, 'mods');
+
+    var modRow = page.locator('#tab-mods tbody tr').filter({hasText: '@smoke_mod'});
+    await modRow.first().waitFor({state: 'visible', timeout: WAIT_TIMEOUT});
+
+    if (await modRow.first().locator('input[type=checkbox]').isChecked({timeout: WAIT_TIMEOUT})) {
+        throw new Error('the checkbox of @smoke_mod is checked, the server has no mods');
+    }
+
+    await openTab(page, 'missions');
+    await page.locator('#tab-missions #available tbody tr').filter({hasText: 'smoke'}).first()
+        .waitFor({state: 'visible', timeout: WAIT_TIMEOUT});
+    await page.locator('#tab-missions #rotation a.add-mission').waitFor({state: 'visible', timeout: WAIT_TIMEOUT});
+
+    await openTab(page, 'players');
+
+    var playersText = await page.locator('#tab-players').innerText({timeout: WAIT_TIMEOUT});
+
+    if (playersText.indexOf('Server not online') === -1) {
+        throw new Error('the Players tab does not show "Server not online": ' + JSON.stringify(playersText));
+    }
+
+    await openTab(page, 'settings');
+
+    var title = await page.locator('#tab-settings #settings input.title').inputValue({timeout: WAIT_TIMEOUT});
+
+    if (title !== 'Smoke Server') {
+        throw new Error('the Settings tab title input holds "' + title + '"');
+    }
+
+    await page.locator('#tab-settings #parameters a.add-parameter').waitFor({state: 'visible', timeout: WAIT_TIMEOUT});
+}});
+
+// B4: the filter on the server Missions tab narrows the available missions.
+checks.push({name: 'server missions filter', run: async function (page, state) {
+    await openServer(page, state);
+    await openTab(page, 'missions');
+    await assertFilter(page, 'server missions filter', '#tab-missions #filterMissions', '#tab-missions #available tbody tr');
+}});
+
 checks.push({name: 'missions', run: async function (page) {
     await clickNav(page, 'a#missions', '#missions');
     await rowWithText(page, 'smoke').waitFor({state: 'visible', timeout: WAIT_TIMEOUT});
     await screenshotBoth(page, 'missions');
+}});
+
+// B3: the filter on the Missions page narrows the list.
+checks.push({name: 'missions filter', run: async function (page) {
+    await clickNav(page, 'a#missions', '#missions');
+    await assertFilter(page, 'missions filter', '#content #filterMissions', '#content #list tbody tr');
 }});
 
 // Uploads through the real form (FormData over XHR). The file input is named `missions` and shares
@@ -637,6 +830,47 @@ checks.push({name: 'op-mode', run: async function (page) {
     }
 }});
 
+// B1: the navbar marks exactly the link of the current route as active.
+var assertActiveNav = async function (page, linkSelector) {
+    var read = function () {
+        return page.evaluate(function (selector) {
+            var items = document.querySelectorAll('#navigation ul.navbar-nav > li.active');
+
+            return {
+                count: items.length,
+                hasLink: items.length === 1 && items[0].querySelector(selector) !== null
+            };
+        }, linkSelector);
+    };
+    var end = Date.now() + WAIT_TIMEOUT;
+    var result = await read();
+
+    while (result.count !== 1 || !result.hasLink) {
+        if (Date.now() > end) {
+            throw new Error('after opening ' + linkSelector + ' the navbar has ' + result.count + ' active item(s)' +
+                (result.count === 1 ? ' and it does not contain that link' : ' (expected exactly 1, containing that link)'));
+        }
+
+        await sleep(100);
+        result = await read();
+    }
+};
+
+checks.push({name: 'nav active tab', run: async function (page) {
+    var routes = [
+        ['a#missions', '#missions'],
+        ['a#logs', '#logs'],
+        ['a#mods', '#mods'],
+        ['a[href="#op-mode"]', '#op-mode'],
+        ['a#dashboard', '']
+    ];
+
+    for (var i = 0; i < routes.length; i++) {
+        await clickNav(page, routes[i][0], routes[i][1]);
+        await assertActiveNav(page, routes[i][0]);
+    }
+}});
+
 // An unrendered template shows up as literal {{placeholder}} text, e.g. when _.templateSettings is lost.
 var assertNoTemplateMarkers = async function (modal, label) {
     var text = await modal.innerText({timeout: WAIT_TIMEOUT});
@@ -694,6 +928,331 @@ checks.push({name: 'settings modal', run: async function (page) {
 
     // This modal has no Cancel; OK only closes it.
     await modal.locator('a.btn.ok').click({timeout: WAIT_TIMEOUT});
+    await page.locator('.modal.in').waitFor({state: 'detached', timeout: WAIT_TIMEOUT});
+    await page.locator('.modal-backdrop').waitFor({state: 'detached', timeout: WAIT_TIMEOUT});
+}});
+
+// The checks below change server state; keep them last and in this order. B10 deletes every server.
+
+// B6: Add on an available mission puts it in the rotation.
+checks.push({name: 'add mission to rotation', run: async function (page, state) {
+    await openServer(page, state);
+    await openTab(page, 'missions');
+
+    var rotation = page.locator('#tab-missions #rotation tbody tr');
+    var before = await rotation.count();
+
+    if (before !== 0) {
+        throw new Error('expected an empty rotation, found ' + before + ' row(s)');
+    }
+
+    var row = page.locator('#tab-missions #available tbody tr').filter({hasText: 'smoke'}).first();
+    await row.waitFor({state: 'visible', timeout: WAIT_TIMEOUT});
+    await row.locator('a.add').click({timeout: WAIT_TIMEOUT});
+
+    await waitForCount(rotation, function (count) { return count === 1; }, 'the rotation did not get 1 row after Add');
+
+    var name = await rotation.first().locator('input#name').inputValue({timeout: WAIT_TIMEOUT});
+
+    if (name !== 'smoke.Altis') {
+        throw new Error('the rotation row name is "' + name + '", expected "smoke.Altis"');
+    }
+}});
+
+// B7: Save sends the edited settings and the rotation, and the server page shows them again.
+checks.push({name: 'server save', run: async function (page, state) {
+    var id = state.serverHref.replace(/^#servers\//, '');
+
+    await openTab(page, 'settings');
+    await page.locator('#tab-settings #settings input.max-players').fill('40', {timeout: WAIT_TIMEOUT});
+
+    var saved = page.waitForResponse(function (response) {
+        return response.request().method() === 'PUT' && response.url().indexOf('/api/servers/' + id) !== -1;
+    }, {timeout: WAIT_TIMEOUT});
+
+    await page.locator('#content form > button[type=submit]').click({timeout: WAIT_TIMEOUT});
+
+    var response = await saved;
+
+    if (response.status() !== 200) {
+        throw new Error('PUT /api/servers/' + id + ' answered ' + response.status());
+    }
+
+    // The server itself, not the form: the API must hold the saved max players and the rotation.
+    var savedJson = await page.evaluate(async function (serverId) {
+        var res = await fetch('/api/servers/' + encodeURIComponent(serverId));
+
+        return {status: res.status, body: await res.json()};
+    }, id);
+
+    if (savedJson.status !== 200) {
+        throw new Error('GET /api/servers/' + id + ' answered ' + savedJson.status + ' after saving');
+    }
+
+    if (String(savedJson.body.max_players) !== '40') {
+        throw new Error('the API holds max_players ' + JSON.stringify(savedJson.body.max_players) + ' after saving, expected 40');
+    }
+
+    var savedMissions = Array.isArray(savedJson.body.missions) ? savedJson.body.missions : [];
+
+    if (!savedMissions.some(function (mission) { return mission && mission.name === 'smoke.Altis'; })) {
+        throw new Error('the API missions are ' + JSON.stringify(savedJson.body.missions) + ' after saving, expected an entry named "smoke.Altis"');
+    }
+
+    await openServer(page, state);
+
+    var maxPlayers = await page.locator('#tab-settings #settings input.max-players').inputValue({timeout: WAIT_TIMEOUT});
+
+    if (maxPlayers !== '40') {
+        throw new Error('max players is "' + maxPlayers + '" after saving and reopening, expected "40"');
+    }
+
+    await openTab(page, 'missions');
+
+    var rotation = page.locator('#tab-missions #rotation tbody tr');
+    await waitForCount(rotation, function (count) { return count === 1; }, 'the rotation does not have 1 row after saving and reopening');
+
+    var name = await rotation.first().locator('input#name').inputValue({timeout: WAIT_TIMEOUT});
+
+    if (name !== 'smoke.Altis') {
+        throw new Error('the rotation row name is "' + name + '" after saving and reopening, expected "smoke.Altis"');
+    }
+}});
+
+// B8: the Add server modal's OK button creates the server and opens its page.
+checks.push({name: 'add server through the modal', run: async function (page) {
+    await page.locator('#navigation a#dashboard').click({timeout: WAIT_TIMEOUT});
+    await page.locator('#content a.btn-primary#add-server').click({timeout: WAIT_TIMEOUT});
+
+    var modal = page.locator('.modal.in');
+    await modal.waitFor({state: 'visible', timeout: WAIT_TIMEOUT});
+    await modal.locator('input.title').fill('Smoke Two', {timeout: WAIT_TIMEOUT});
+    await modal.locator('a.btn.ok').click({timeout: WAIT_TIMEOUT});
+
+    await page.locator('.modal.in').waitFor({state: 'detached', timeout: WAIT_TIMEOUT});
+    await page.locator('.modal-backdrop').waitFor({state: 'detached', timeout: WAIT_TIMEOUT});
+
+    try {
+        await page.waitForFunction(function () {
+            return window.location.hash === '#servers/Smoke-Two';
+        }, null, {timeout: WAIT_TIMEOUT});
+    } catch (err) {
+        var hash = await page.evaluate(function () { return window.location.hash; });
+        throw new Error('the hash is "' + hash + '" after adding a server, expected "#servers/Smoke-Two"', {cause: err});
+    }
+
+    var heading = page.locator('#content h2').filter({hasText: 'Smoke Two'});
+    await heading.waitFor({state: 'visible', timeout: WAIT_TIMEOUT});
+
+    var text = (await heading.textContent({timeout: WAIT_TIMEOUT})).trim();
+
+    if (text !== 'Smoke Two') {
+        throw new Error('the page heading is "' + text + '", expected "Smoke Two"');
+    }
+}});
+
+// B9: a server created outside the page reaches the open page through the socket push.
+checks.push({name: 'socket push re-renders lists', run: async function (page) {
+    await page.locator('#navigation a#dashboard').click({timeout: WAIT_TIMEOUT});
+
+    var rows = page.locator('#content table tbody tr');
+    var navItems = page.locator('#servers-list > li');
+
+    await rows.first().waitFor({state: 'visible', timeout: WAIT_TIMEOUT});
+
+    var rowsBefore = await rows.count();
+    var navBefore = await navItems.count();
+
+    await page.evaluate(function () { window.__smokePushMarker = 'still-here'; });
+
+    var status = await page.evaluate(async function (body) {
+        var response = await fetch('/api/servers', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(body)
+        });
+
+        return response.status;
+    }, serverFixture('Smoke Push'));
+
+    if (status !== 200) {
+        throw new Error('POST /api/servers answered ' + status);
+    }
+
+    await waitForCount(rows, function (count) { return count === rowsBefore + 1; }, 'the servers table did not grow to ' + (rowsBefore + 1) + ' row(s) after the push');
+    await page.locator('#content table tbody a[href="#servers/Smoke-Push"]').waitFor({state: 'visible', timeout: WAIT_TIMEOUT});
+    await waitForCount(navItems, function (count) { return count === navBefore + 1; }, 'the servers dropdown did not grow to ' + (navBefore + 1) + ' item(s) after the push');
+
+    var marker = await page.evaluate(function () { return window.__smokePushMarker; });
+
+    if (marker !== 'still-here') {
+        throw new Error('the page reloaded');
+    }
+}});
+
+// B12: a socket push that adds, removes and reorders nothing must not touch the list rows. Under
+// Marionette 4 every merging set() re-attached all children, so focus fell back to <body> and a text
+// selection in the table was cleared every few seconds.
+checks.push({name: 'no-op push keeps list rows', run: async function (page) {
+    await page.locator('#navigation a#dashboard').click({timeout: WAIT_TIMEOUT});
+
+    var rows = page.locator('#content table tbody tr');
+    await waitForCount(rows, function (count) { return count === 3; }, 'the servers table does not have 3 rows before the push');
+
+    var start = rowWithText(page, 'Smoke Two').locator('button.start');
+    await start.waitFor({state: 'visible', timeout: WAIT_TIMEOUT});
+    await start.focus({timeout: WAIT_TIMEOUT});
+
+    var before = await page.evaluate(function () {
+        var tbody = document.querySelector('#content table tbody');
+        var list = document.querySelector('ul#servers-list');
+        var active = document.activeElement;
+
+        if (!tbody || !list || !active || !active.classList.contains('start')) {
+            return {ok: false, active: active ? active.tagName + '.' + active.className : 'none', tbody: !!tbody, list: !!list};
+        }
+
+        window.__smokeStartButton = active;
+        window.__smokeRecords = {tbody: [], list: []};
+
+        var observe = function (target, records) {
+            var observer = new MutationObserver(function (batch) {
+                batch.forEach(function (record) { records.push(record); });
+            });
+
+            observer.observe(target, {childList: true});
+
+            return observer;
+        };
+
+        window.__smokeObservers = [
+            observe(tbody, window.__smokeRecords.tbody),
+            observe(list, window.__smokeRecords.list)
+        ];
+
+        return {ok: true};
+    });
+
+    if (!before.ok) {
+        throw new Error('could not set up: ' + JSON.stringify(before));
+    }
+
+    var result = await page.evaluate(async function () {
+        var url = '/api/servers/Smoke-Server';
+        var current = await (await fetch(url)).json();
+
+        current.port = current.port + 10;
+
+        var response = await fetch(url, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(current)
+        });
+
+        return {status: response.status, port: current.port};
+    });
+
+    if (result.status !== 200) {
+        throw new Error('PUT /api/servers/Smoke-Server answered ' + result.status);
+    }
+
+    // The Smoke Server row re-renders itself on the model change, so its new port proves the push arrived.
+    try {
+        await page.waitForFunction(function (port) {
+            var cell = Array.prototype.filter.call(document.querySelectorAll('#content table tbody tr'), function (row) {
+                return row.textContent.indexOf('Smoke Server') !== -1;
+            }).map(function (row) { return row.children[2]; })[0];
+
+            return !!cell && cell.textContent.trim() === String(port);
+        }, result.port, {timeout: WAIT_TIMEOUT});
+    } catch (err) {
+        throw new Error('the Smoke Server row did not show port ' + result.port + ' after the push', {cause: err});
+    }
+
+    // Let any trailing mutation records be delivered before they are read.
+    await sleep(500);
+
+    var after = await page.evaluate(function () {
+        var describe = function (record) {
+            var names = function (nodes) {
+                return Array.prototype.map.call(nodes, function (node) {
+                    return node.nodeName.toLowerCase() + (node.textContent ? '(' + node.textContent.replace(/\s+/g, ' ').trim().slice(0, 30) + ')' : '');
+                }).join(',');
+            };
+
+            return 'removed [' + names(record.removedNodes) + '] added [' + names(record.addedNodes) + ']';
+        };
+
+        window.__smokeObservers.forEach(function (observer) { observer.disconnect(); });
+
+        var active = document.activeElement;
+
+        return {
+            tbody: window.__smokeRecords.tbody.map(describe),
+            list: window.__smokeRecords.list.map(describe),
+            sameButton: active === window.__smokeStartButton,
+            active: active ? active.tagName.toLowerCase() + (active.className ? '.' + String(active.className).replace(/\s+/g, '.') : '') : 'none'
+        };
+    });
+
+    var problems = [];
+
+    if (after.tbody.length > 0) {
+        problems.push('a push that changed one port moved ' + after.tbody.length + ' mutation(s) in the servers table body: ' + after.tbody.join(' | '));
+    }
+
+    if (after.list.length > 0) {
+        problems.push('a push that changed one port moved ' + after.list.length + ' mutation(s) in the Servers dropdown: ' + after.list.join(' | '));
+    }
+
+    if (!after.sameButton) {
+        problems.push('focus left the Smoke Two Start button after the push, document.activeElement is ' + after.active);
+    }
+
+    if (problems.length > 0) {
+        throw new Error(problems.join('; '));
+    }
+}});
+
+// B10: with no servers left the list shows its empty view, and its button still opens the modal.
+checks.push({name: 'empty server list', run: async function (page) {
+    await page.locator('#navigation a#dashboard').click({timeout: WAIT_TIMEOUT});
+    await page.locator('#content table tbody tr').first().waitFor({state: 'visible', timeout: WAIT_TIMEOUT});
+
+    var statuses = await page.evaluate(async function () {
+        var list = await (await fetch('/api/servers')).json();
+        var result = [];
+
+        for (var i = 0; i < list.length; i++) {
+            var response = await fetch('/api/servers/' + encodeURIComponent(list[i].id), {method: 'DELETE'});
+
+            result.push(response.status);
+        }
+
+        return result;
+    });
+
+    if (statuses.length === 0 || statuses.some(function (status) { return status !== 200; })) {
+        throw new Error('deleting the servers answered ' + JSON.stringify(statuses));
+    }
+
+    var rows = page.locator('#content table tbody tr');
+    await waitForCount(rows, function (count) { return count === 1; }, 'the servers table does not have exactly 1 row after deleting every server');
+
+    var rowText = await rows.first().innerText({timeout: WAIT_TIMEOUT});
+
+    if (rowText.indexOf('Create your first server!') === -1) {
+        throw new Error('the only row does not say "Create your first server!": ' + JSON.stringify(rowText));
+    }
+
+    await rows.first().locator('a#add-server').click({timeout: WAIT_TIMEOUT});
+
+    var modal = page.locator('.modal.in');
+    await modal.waitFor({state: 'visible', timeout: WAIT_TIMEOUT});
+    await modal.locator('input.title').waitFor({state: 'visible', timeout: WAIT_TIMEOUT});
+    await assertNoTemplateMarkers(modal, 'The add server modal from the empty list');
+
+    await modal.locator('a.btn.cancel').click({timeout: WAIT_TIMEOUT});
     await page.locator('.modal.in').waitFor({state: 'detached', timeout: WAIT_TIMEOUT});
     await page.locator('.modal-backdrop').waitFor({state: 'detached', timeout: WAIT_TIMEOUT});
 }});

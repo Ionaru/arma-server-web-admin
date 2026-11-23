@@ -3,9 +3,9 @@ var Marionette = require('marionette');
 
 var tpl = require('tpl/servers/players.html');
 
-module.exports = Marionette.LayoutView.extend({
+module.exports = Marionette.View.extend({
     template: _.template(tpl),
-    templateHelpers: {
+    templateContext: {
         players: function () {
             return _.sortBy(this.state.players, function (player) {
                 return player.name;

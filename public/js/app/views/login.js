@@ -3,6 +3,6 @@ var Marionette = require('marionette');
 
 var tpl = require('tpl/login.html');
 
-module.exports = Marionette.ItemView.extend({
+module.exports = Marionette.View.extend({
     template: _.template(tpl)
 });

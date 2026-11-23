@@ -4,7 +4,7 @@ var dialogs = require('app/dialogs');
 
 var tpl = require('tpl/servers/info.html');
 
-module.exports = Marionette.LayoutView.extend({
+module.exports = Marionette.View.extend({
     template: _.template(tpl),
 
     events: {
