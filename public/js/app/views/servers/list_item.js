@@ -1,6 +1,6 @@
 var _ = require('underscore');
 var Marionette = require('marionette');
-var sweetAlert = require('sweet-alert');
+var dialogs = require('app/dialogs');
 
 var tpl = require('tpl/servers/list_item.html');
 
@@ -30,17 +30,14 @@ module.exports = Marionette.ItemView.extend({
 
     delete: function (event) {
         var self = this;
-        sweetAlert({
-                title: 'Are you sure?',
-                text: 'Your server configuration will be deleted!',
-                type: 'warning',
-                showCancelButton: true,
-                confirmButtonClass: 'btn-danger',
-                confirmButtonText: 'Yes, delete it!'
-            },
-            function () {
-                self.model.destroy();
-            });
+        dialogs.confirm({
+            title: 'Are you sure?',
+            text: 'Your server configuration will be deleted!',
+            confirmText: 'Yes, delete it!',
+            danger: true
+        }, function () {
+            self.model.destroy();
+        });
     },
 
     start: function (event) {
@@ -48,11 +45,7 @@ module.exports = Marionette.ItemView.extend({
         event.preventDefault();
         this.model.start(function (err) {
             if (err) {
-                sweetAlert({
-                    title: 'Error',
-                    text: err.responseText,
-                    type: 'error'
-                });
+                dialogs.alert('error', 'Error', err.responseText);
                 return;
             }
 
@@ -63,28 +56,21 @@ module.exports = Marionette.ItemView.extend({
     stop: function (event) {
         var self = this;
         event.preventDefault();
-        sweetAlert({
-                title: 'Are you sure?',
-                text: 'The server will stopped.',
-                type: 'warning',
-                showCancelButton: true,
-                confirmButtonClass: 'btn-warning',
-                confirmButtonText: 'Yes, stop it!'
-            },
-            function () {
-                self.model.stop(function (err) {
-                    if (err) {
-                        sweetAlert({
-                            title: 'Error',
-                            text: err.responseText,
-                            type: 'error'
-                        });
-                        return;
-                    }
+        dialogs.confirm({
+            title: 'Are you sure?',
+            text: 'The server will stopped.',
+            confirmText: 'Yes, stop it!',
+            danger: false
+        }, function () {
+            self.model.stop(function (err) {
+                if (err) {
+                    dialogs.alert('error', 'Error', err.responseText);
+                    return;
+                }
 
-                    self.render();
-                });
+                self.render();
             });
+        });
     },
 
     serverUpdated: function (event) {

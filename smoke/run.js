@@ -393,7 +393,7 @@ var uploadPosts = function () {
     }).length;
 };
 
-var uploadAndExpect = async function (page, label, names, hrefs) {
+var uploadAndExpect = async function (page, label, names, hrefs, delayMs) {
     var uploadDir = fs.mkdtempSync(path.join(root, 'upload-'));
     var files = names.map(function (name) {
         var file = path.join(uploadDir, name);
@@ -407,7 +407,35 @@ var uploadAndExpect = async function (page, label, names, hrefs) {
     await input.waitFor({state: 'attached', timeout: WAIT_TIMEOUT});
     await page.evaluate(function () { window.__smokeUploadMarker = 'still-here'; });
     await input.setInputFiles(files);
+
+    var delayRoute = null;
+
+    if (delayMs) {
+        // Hold the POST so the button's pending state can be observed, then pass it on to the real server.
+        delayRoute = async function (route) {
+            if (route.request().method() === 'POST') {
+                await new Promise(function (resolve) { setTimeout(resolve, delayMs); });
+            }
+
+            await route.continue();
+        };
+        await page.route('**/api/missions', delayRoute);
+    }
+
     await button.click({timeout: WAIT_TIMEOUT});
+
+    if (delayMs) {
+        try {
+            // B8: Ladda marks the button while the request is pending.
+            await page.waitForFunction(function () {
+                var btn = document.querySelector('#upload button[type=submit]');
+
+                return btn && btn.hasAttribute('data-loading');
+            }, null, {timeout: delayMs - 500});
+        } catch (err) {
+            throw new Error(label + ': the Upload button had no data-loading attribute while the upload was pending', {cause: err});
+        }
+    }
 
     for (var i = 0; i < hrefs.length; i++) {
         await page.locator('#content table tbody a[href="' + hrefs[i] + '"]').waitFor({state: 'visible', timeout: WAIT_TIMEOUT});
@@ -428,6 +456,10 @@ var uploadAndExpect = async function (page, label, names, hrefs) {
         }, null, {timeout: WAIT_TIMEOUT});
     } catch (err) {
         throw new Error(label + ': the Upload button did not become enabled again or the file input was not emptied', {cause: err});
+    } finally {
+        if (delayRoute) {
+            await page.unroute('**/api/missions', delayRoute);
+        }
     }
 };
 
@@ -441,6 +473,9 @@ checks.push({name: 'mission upload', run: async function (page) {
         '/api/missions/upload_b.stratis.pbo'
     ]);
     await screenshot(page, 'missions-upload');
+
+    // B8: a delayed POST keeps the button in the Ladda loading state until the response arrives.
+    await uploadAndExpect(page, 'delayed upload', ['Upload_Slow.Altis.pbo'], ['/api/missions/upload_slow.altis.pbo'], 1500);
 
     // Nothing selected: no request and the button stays usable.
     var before = uploadPosts();
@@ -488,6 +523,36 @@ checks.push({name: 'logs', run: async function (page) {
     await clickNav(page, 'a#logs', '#logs');
     await rowWithText(page, 'arma3server_smoke.log').waitFor({state: 'visible', timeout: WAIT_TIMEOUT});
     await screenshotBoth(page, 'logs');
+
+    // B7: the delete confirm is cancelled, so nothing is deleted.
+    var deletes = function () {
+        return requests.filter(function (request) {
+            return request.method === 'DELETE' && request.url.indexOf('/api/logs/') !== -1;
+        }).length;
+    };
+    var deletesBefore = deletes();
+    var row = rowWithText(page, 'arma3server_smoke.log');
+
+    await row.locator('.destroy').click({timeout: WAIT_TIMEOUT});
+
+    var popup = page.locator('.swal2-popup');
+    await popup.waitFor({state: 'visible', timeout: WAIT_TIMEOUT});
+
+    var confirmClass = await popup.locator('.swal2-confirm').getAttribute('class');
+
+    if (confirmClass.split(/\s+/).indexOf('btn-danger') === -1) {
+        throw new Error('the log delete confirm button has no btn-danger class ("' + confirmClass + '")');
+    }
+
+    await popup.locator('.swal2-cancel').click({timeout: WAIT_TIMEOUT});
+    await popup.waitFor({state: 'hidden', timeout: WAIT_TIMEOUT});
+    await page.waitForTimeout(1000);
+
+    if (deletes() !== deletesBefore) {
+        throw new Error('a DELETE request to /api/logs/ was sent after cancelling the delete confirm');
+    }
+
+    await rowWithText(page, 'arma3server_smoke.log').waitFor({state: 'visible', timeout: WAIT_TIMEOUT});
 }});
 
 checks.push({name: 'op-mode', run: async function (page) {
@@ -513,10 +578,10 @@ checks.push({name: 'op-mode', run: async function (page) {
 
     await run.click({timeout: WAIT_TIMEOUT});
 
-    var dialog = page.locator('.sweet-alert.showSweetAlert');
+    var dialog = page.locator('.swal2-popup');
     await dialog.waitFor({state: 'visible', timeout: WAIT_TIMEOUT});
 
-    var cancel = dialog.locator('button.cancel');
+    var cancel = dialog.locator('.swal2-cancel');
     await cancel.waitFor({state: 'visible', timeout: WAIT_TIMEOUT});
 
     await settle(page);
@@ -524,7 +589,7 @@ checks.push({name: 'op-mode', run: async function (page) {
 
     // Never the confirm button: that would stop servers.
     await cancel.click({timeout: WAIT_TIMEOUT});
-    await page.locator('.sweet-alert').waitFor({state: 'hidden', timeout: WAIT_TIMEOUT});
+    await dialog.waitFor({state: 'hidden', timeout: WAIT_TIMEOUT});
 
     if (runPosts() !== before) {
         throw new Error('POST /api/op-mode/run was sent');
