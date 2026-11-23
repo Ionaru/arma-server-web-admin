@@ -16,7 +16,7 @@ module.exports = CollectionView.extend({
     },
 
     modelEvents: {
-        change: 'serverUpdated'
+        change: 'serverChanged'
     },
 
     initialize: function (options) {
@@ -35,6 +35,12 @@ module.exports = CollectionView.extend({
                 return parameter.get('parameter');
             })
         };
+    },
+
+    serverChanged: function () {
+        if (this.model.hasConfigChange()) {
+            this.serverUpdated();
+        }
     },
 
     serverUpdated: function () {
