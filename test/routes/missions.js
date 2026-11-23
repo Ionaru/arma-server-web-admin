@@ -1,7 +1,6 @@
 require('should');
 var express = require('express');
 var fs = require('fs');
-var fsExtra = require('fs.extra');
 var os = require('os');
 var path = require('path');
 var bodyParser = require('body-parser');
@@ -20,7 +19,7 @@ describe('routes/missions upload (B1-B6)', function () {
     beforeEach(function (done) {
         root = fs.mkdtempSync(path.join(os.tmpdir(), 'missions-route-'));
         missionsDir = path.join(root, 'mpmissions');
-        fsExtra.mkdirpSync(missionsDir);
+        fs.mkdirSync(missionsDir, {recursive: true});
 
         missions = new Missions({path: root});
 
@@ -53,7 +52,7 @@ describe('routes/missions upload (B1-B6)', function () {
                 return setTimeout(waitForIdle, 10);
             }
 
-            fsExtra.rmrfSync(root);
+            fs.rmSync(root, {recursive: true, force: true});
             done();
         };
 
@@ -207,7 +206,7 @@ describe('routes/missions download (B2-B3)', function () {
     beforeEach(function () {
         tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'missions-download-'));
         dir = path.join(tmp, '.arma', 'mpmissions');
-        fsExtra.mkdirpSync(dir);
+        fs.mkdirSync(dir, {recursive: true});
 
         var manager = {
             missionsPath: function () {
@@ -225,7 +224,7 @@ describe('routes/missions download (B2-B3)', function () {
     });
 
     afterEach(function () {
-        fsExtra.rmrfSync(tmp);
+        fs.rmSync(tmp, {recursive: true, force: true});
     });
 
     it('B2a: GET /<name> serves a mission below a dot-directory as an attachment', function (done) {
@@ -270,7 +269,7 @@ describe('routes/missions download (B2-B3)', function () {
 
     it('B3: GET /..%2Fsecret.txt is refused with 403 and does not leak the file', function (done) {
         var plainDir = path.join(tmp, 'mpmissions');
-        fsExtra.mkdirpSync(plainDir);
+        fs.mkdirSync(plainDir, {recursive: true});
         fs.writeFileSync(path.join(tmp, 'secret.txt'), 'TOP-SECRET');
 
         var manager = {

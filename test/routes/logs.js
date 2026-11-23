@@ -1,7 +1,6 @@
 require('should');
 var express = require('express');
 var fs = require('fs');
-var fsExtra = require('fs.extra');
 var os = require('os');
 var path = require('path');
 var crypto = require('crypto');
@@ -20,8 +19,8 @@ describe('routes/logs (B8)', function () {
     beforeEach(function () {
         root = fs.mkdtempSync(path.join(os.tmpdir(), 'logs-route-'));
         profiles = path.join(root, 'profiles');
-        fsExtra.mkdirpSync(profiles);
-        fsExtra.mkdirpSync(path.join(root, 'arma', 'logs'));
+        fs.mkdirSync(profiles, {recursive: true});
+        fs.mkdirSync(path.join(root, 'arma', 'logs'), {recursive: true});
 
         filePath = path.join(profiles, 'arma3server_x64_2026-11-21_19-30-10.rpt');
         fs.writeFileSync(filePath, 'hello log\n');
@@ -42,7 +41,7 @@ describe('routes/logs (B8)', function () {
     });
 
     afterEach(function () {
-        fsExtra.rmrfSync(root);
+        fs.rmSync(root, {recursive: true, force: true});
     });
 
     it('B8: GET / should return the file objects as JSON', function (done) {
@@ -117,8 +116,8 @@ describe('routes/logs download from a dot-directory (B1)', function () {
     beforeEach(function () {
         root = fs.mkdtempSync(path.join(os.tmpdir(), 'logs-route-'));
         var profiles = path.join(root, '.hidden', 'profiles');
-        fsExtra.mkdirpSync(profiles);
-        fsExtra.mkdirpSync(path.join(root, 'arma', 'logs'));
+        fs.mkdirSync(profiles, {recursive: true});
+        fs.mkdirSync(path.join(root, 'arma', 'logs'), {recursive: true});
 
         filePath = path.join(profiles, 'arma3server_x64_2026-11-21_19-30-10.rpt');
         fs.writeFileSync(filePath, 'hello log\n');
@@ -140,7 +139,7 @@ describe('routes/logs download from a dot-directory (B1)', function () {
     });
 
     afterEach(function () {
-        fsExtra.rmrfSync(root);
+        fs.rmSync(root, {recursive: true, force: true});
     });
 
     it('B1: GET /<id>/download serves a log below a dot-directory as an attachment', function (done) {

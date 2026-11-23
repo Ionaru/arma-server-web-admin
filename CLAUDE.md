@@ -19,7 +19,7 @@ The project is old and deliberately not modernised. Expect ES5-style `var` and p
 | Server | Express 5, socket.io 4 |
 | Frontend | Backbone 1.3.3 + Marionette 2.4.7, Bootstrap 3, jQuery 3 |
 | Bundling | webpack 1, compiled **in memory** by `webpack-dev-middleware` (`app.js`) |
-| Process launcher | the `arma-server` package (0.0.7) actually spawns the game |
+| Process launcher | the `arma-server` package (0.0.10) actually spawns the game |
 | Status polling | `gamedig`, every 5s per running server |
 | Tests | mocha 12, `should`, supertest 7, timekeeper 2; a Playwright smoke run of the real UI (`smoke/`) |
 
@@ -177,6 +177,8 @@ Driven by `config.type` (`linux` / `windows` / `wine`), passed to `arma-server` 
   nothing is captured.
 - `Logs.logsPath()` (the default log folder) differs per platform (`lib/logs.js`). It is only one of
   the folders the log view lists; see *Logs and headless clients*.
+- arma-server 0.0.10 starts the dedicated server with its working directory set to `config.path` on
+  every platform (headless clients only on Linux).
 - Per the README, Windows Error Reporting must be disabled, or server control gets stuck on a crash
   because the dead process never exits.
 
