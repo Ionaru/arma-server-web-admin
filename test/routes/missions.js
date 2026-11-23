@@ -187,6 +187,170 @@ describe('routes/missions upload (B1-B6)', function () {
     });
 });
 
+describe('routes/missions upload name (B4)', function () {
+    var root;
+    var missionsDir;
+    var missions;
+    var inFlight;
+    var app;
+
+    beforeEach(function (done) {
+        root = fs.mkdtempSync(path.join(os.tmpdir(), 'missions-name-'));
+        missionsDir = path.join(root, 'mpmissions');
+        fs.mkdirSync(missionsDir, {recursive: true});
+
+        missions = new Missions({path: root});
+        inFlight = 0;
+        var original = missions.updateMissions;
+        missions.updateMissions = function (cb) {
+            inFlight++;
+            original.call(this, function (err) {
+                inFlight--;
+                if (cb) {
+                    cb(err);
+                }
+            });
+        };
+
+        app = express();
+        app.set('env', 'test');
+        app.use('/api/missions', missionsRoute(missions));
+
+        missions.updateMissions(function () {
+            done();
+        });
+    });
+
+    afterEach(function (done) {
+        var waitForIdle = function () {
+            if (inFlight > 0) {
+                return setTimeout(waitForIdle, 10);
+            }
+
+            fs.rmSync(root, {recursive: true, force: true});
+            done();
+        };
+
+        waitForIdle();
+    });
+
+    it('B4: an encoded backslash traversal in the upload name keeps only the last segment', function (done) {
+        request(app)
+            .post('/api/missions')
+            .attach('missions', Buffer.from('EVIL'), '..%5C..%5CEvil.Altis.pbo')
+            .end(function (err, res) {
+                if (err) {
+                    return done(err);
+                }
+
+                res.status.should.eql(200);
+                res.body.should.eql({success: true});
+                fs.readdirSync(missionsDir).sort().should.eql(['evil.altis.pbo'], 'listing: ' + JSON.stringify(fs.readdirSync(missionsDir)));
+                fs.readdirSync(root).should.eql(['mpmissions'], 'root: ' + JSON.stringify(fs.readdirSync(root)));
+                fs.readFileSync(path.join(missionsDir, 'evil.altis.pbo')).toString().should.eql('EVIL');
+                done();
+            });
+    });
+});
+
+describe('routes/missions delete (B1-B3)', function () {
+    var root;
+    var missionsDir;
+    var missions;
+    var inFlight;
+    var app;
+
+    beforeEach(function (done) {
+        root = fs.mkdtempSync(path.join(os.tmpdir(), 'missions-delete-'));
+        missionsDir = path.join(root, 'mpmissions');
+        fs.mkdirSync(missionsDir, {recursive: true});
+        fs.writeFileSync(path.join(missionsDir, 'Keep.Altis.pbo'), 'KEEP');
+        fs.writeFileSync(path.join(missionsDir, 'Other.Altis.pbo'), 'OTHER');
+        fs.writeFileSync(path.join(root, 'secret.txt'), 'TOP-SECRET');
+
+        missions = new Missions({path: root});
+        inFlight = 0;
+        var original = missions.updateMissions;
+        missions.updateMissions = function (cb) {
+            inFlight++;
+            original.call(this, function (err) {
+                inFlight--;
+                if (cb) {
+                    cb(err);
+                }
+            });
+        };
+
+        app = express();
+        app.set('env', 'test');
+        app.use('/api/missions', missionsRoute(missions));
+
+        missions.updateMissions(function () {
+            done();
+        });
+    });
+
+    afterEach(function (done) {
+        var waitForIdle = function () {
+            if (inFlight > 0) {
+                return setTimeout(waitForIdle, 10);
+            }
+
+            fs.rmSync(root, {recursive: true, force: true});
+            done();
+        };
+
+        waitForIdle();
+    });
+
+    it('B1: DELETE of a listed mission answers 200 and removes the file', function (done) {
+        request(app)
+            .delete('/api/missions/Keep.Altis.pbo')
+            .end(function (err, res) {
+                if (err) {
+                    return done(err);
+                }
+
+                res.status.should.eql(200);
+                res.body.should.eql({success: true});
+                fs.existsSync(path.join(missionsDir, 'Keep.Altis.pbo')).should.eql(false);
+                fs.existsSync(path.join(missionsDir, 'Other.Altis.pbo')).should.eql(true);
+                done();
+            });
+    });
+
+    it('B2: DELETE /..%2Fsecret.txt answers 404 and keeps the file outside mpmissions', function (done) {
+        request(app)
+            .delete('/api/missions/..%2Fsecret.txt')
+            .end(function (err, res) {
+                if (err) {
+                    return done(err);
+                }
+
+                res.status.should.eql(404);
+                res.body.should.eql({error: 'Mission not found'});
+                fs.existsSync(path.join(root, 'secret.txt')).should.eql(true);
+                fs.readdirSync(missionsDir).sort().should.eql(['Keep.Altis.pbo', 'Other.Altis.pbo']);
+                done();
+            });
+    });
+
+    it('B3: DELETE of a mission that is not listed answers 404 with the same body', function (done) {
+        request(app)
+            .delete('/api/missions/Nope.Altis.pbo')
+            .end(function (err, res) {
+                if (err) {
+                    return done(err);
+                }
+
+                res.status.should.eql(404);
+                res.body.should.eql({error: 'Mission not found'});
+                fs.readdirSync(missionsDir).sort().should.eql(['Keep.Altis.pbo', 'Other.Altis.pbo']);
+                done();
+            });
+    });
+});
+
 function binaryParser(res, callback) {
     var chunks = [];
     res.on('data', function (chunk) {
