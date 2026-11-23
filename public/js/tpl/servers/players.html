@@ -9,8 +9,8 @@
     <tbody>
     <% _.each(players(), function(player) { %>
     <tr>
-        <td><%= player.name %></td>
-        <td><%= player.raw.score %></td>
+        <td><%- player.name %></td>
+        <td><%- player.raw.score %></td>
     </tr>
     <% }); %>
     </tbody>
