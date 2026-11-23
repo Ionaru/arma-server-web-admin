@@ -331,7 +331,11 @@ pnpm run smoke         # starts the real app and clicks through every page in he
   mission, one mod and one log, `servers.json` with one server that has `auto_start: false`, and op
   mode disabled), starts `app.js` there on a free port, and visits the dashboard, every server tab,
   missions, mods, logs and op mode, plus the Add server and Settings modals and the op mode Run now
-  confirm (cancelled, never confirmed).
+  confirm (cancelled, never confirmed). On missions it also uploads `.pbo` files through the real
+  form (one file, then two in one selection), and checks that the rows appear, the page does not
+  navigate, and the button and file input reset; clicking Upload with nothing selected must send no
+  request. The uploads land in the temp mpmissions folder, so a check that runs after it sees more
+  than the one seeded mission.
 - It fails on any console error, page error, app response >= 400 or failed script, stylesheet or
   font load, and on a missing DOM marker, including the Glyphicons font actually loading. There is
   no allowlist on purpose: fix the cause instead of filtering the message.
