@@ -20,7 +20,12 @@ var OpModeNotifier = require('./lib/op-mode-notifier');
 
 var app = express();
 var server = require('http').Server(app);
-var io = require('socket.io')(server);
+// engine.io answers /socket.io/ before Express runs, so the app's basic auth does not cover it.
+var io = require('socket.io')(server, {
+    allowRequest: function (req, callback) {
+        callback(null, setupBasicAuth.isAuthorized(config, req));
+    }
+});
 
 setupBasicAuth(config, app);
 
