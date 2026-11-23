@@ -17,7 +17,7 @@ The project is old and deliberately not modernised. Expect ES5-style `var` and p
 | Runtime | Node. Production runs Node 26. `engines` in `package.json` is `^20.19.0 || ^22.13.0 || >=24` (the eslint 10 and mocha 12 floor). CI runs Node 26 on GitHub Actions (`.github/workflows/ci.yml`). |
 | Package manager | pnpm 12 (needs Node >= 18), pinned by `packageManager` in `package.json`; see *Dependencies: pnpm* |
 | Server | Express 5, socket.io 4 |
-| Frontend | Backbone 1.3.3 + Marionette 2.4.7, Bootstrap 3, jQuery 3 |
+| Frontend | Backbone 1.3.3 + Marionette 2.4.7, Bootstrap 3, jQuery 3, sweetalert2 11, Ladda 2 |
 | Bundling | webpack 5 (development mode), compiled **in memory** by `webpack-dev-middleware` (`app.js`) |
 | Process launcher | the `arma-server` package (0.0.10) actually spawns the game |
 | Status polling | `gamedig` 5, every 5s per running server; a poll is skipped while the previous query for the same process is still in flight (a failing gamedig 5 query takes about 4 to 6 s for Arma 2/3, read from the gamedig source) |
@@ -148,6 +148,9 @@ have made both jobs worse. It has its own module and its own file instead.
 
 `Backbone.history.start()` is deliberately deferred until the first `servers` event arrives
 (`public/js/app/router.js`), so nothing renders before there is data.
+
+`public/js/app/dialogs.js` is the only place dialogs are created: views call `dialogs.alert` and
+`dialogs.confirm` (a confirm's callback runs only on Confirm), never sweetalert2 directly.
 
 ## EventEmitter: use util.inherits
 
@@ -331,9 +334,10 @@ pnpm run smoke         # starts the real app and clicks through every page in he
   mission, one mod and one log, `servers.json` with one server that has `auto_start: false`, and op
   mode disabled), starts `app.js` there on a free port, and visits the dashboard, every server tab,
   missions, mods, logs and op mode, plus the Add server and Settings modals and the op mode Run now
-  confirm (cancelled, never confirmed). On missions it also uploads `.pbo` files through the real
-  form (one file, then two in one selection), and checks that the rows appear, the page does not
-  navigate, and the button and file input reset; clicking Upload with nothing selected must send no
+  confirm and the log delete confirm (cancelled, never confirmed). On missions it also uploads
+  `.pbo` files through the real form (one file, then two in one selection), and checks that the rows
+  appear, the page does not navigate,
+  and the button and file input reset; clicking Upload with nothing selected must send no
   request. The uploads land in the temp mpmissions folder, so a check that runs after it sees more
   than the one seeded mission.
 - It fails on any console error, page error, app response >= 400 or failed script, stylesheet or

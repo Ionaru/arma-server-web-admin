@@ -2,7 +2,7 @@ var $ = require('jquery');
 var _ = require('underscore');
 var Backbone = require('backbone');
 var Marionette = require('marionette');
-var sweetAlert = require('sweet-alert');
+var dialogs = require('app/dialogs');
 
 var FormView = require('app/views/servers/form');
 var InfoView = require('app/views/servers/info');
@@ -73,11 +73,7 @@ module.exports = Marionette.LayoutView.extend({
                 }
             },
             error: function (model, response) {
-                sweetAlert({
-                    title: 'Error',
-                    text: 'An error occurred, please consult the logs',
-                    type: 'error'
-                });
+                dialogs.alert('error', 'Error', 'An error occurred, please consult the logs');
             }
         });
     },

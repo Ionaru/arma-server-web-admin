@@ -1,7 +1,7 @@
 var _ = require('underscore');
 var Backbone = require('backbone');
 var Marionette = require('marionette');
-var sweetAlert = require('sweet-alert');
+var dialogs = require('app/dialogs');
 
 var tpl = require('tpl/servers/form.html');
 
@@ -51,11 +51,7 @@ module.exports = Marionette.ItemView.extend({
                 });
             },
             error: function (model, response) {
-                sweetAlert({
-                    title: 'Error',
-                    text: 'An error occurred, please consult the logs',
-                    type: 'error'
-                });
+                dialogs.alert('error', 'Error', 'An error occurred, please consult the logs');
             }
         });
     }

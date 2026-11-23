@@ -1,7 +1,7 @@
 var $ = require('jquery');
 var _ = require('underscore');
 var Marionette = require('marionette');
-var sweetAlert = require('sweet-alert');
+var dialogs = require('app/dialogs');
 
 var tpl = require('tpl/op-mode.html');
 
@@ -119,22 +119,14 @@ module.exports = Marionette.ItemView.extend({
                 self.editing = false;
                 self.render();
 
-                sweetAlert({
-                    title: 'Saved',
-                    text: 'The op mode schedule has been saved.',
-                    type: 'success'
-                });
+                dialogs.alert('success', 'Saved', 'The op mode schedule has been saved.');
             },
             error: function (model, response) {
                 // Leave editing set: the operator's input was rejected, not accepted, so it must
                 // stay on screen for them to correct.
                 $save.prop('disabled', false);
 
-                sweetAlert({
-                    title: 'Error',
-                    text: errorText(response),
-                    type: 'error'
-                });
+                dialogs.alert('error', 'Error', errorText(response));
             }
         });
     },
@@ -144,26 +136,19 @@ module.exports = Marionette.ItemView.extend({
 
         var self = this;
 
-        sweetAlert({
-                title: 'Run op mode now?',
-                text: 'Every server except the op server will be stopped immediately and players ' +
-                    'will be disconnected. The op server will be restarted.',
-                type: 'warning',
-                showCancelButton: true,
-                confirmButtonClass: 'btn-warning',
-                confirmButtonText: 'Yes, run it!'
-            },
-            function () {
-                self.model.run(function (err) {
-                    if (err) {
-                        sweetAlert({
-                            title: 'Error',
-                            text: errorText(err),
-                            type: 'error'
-                        });
-                    }
-                });
+        dialogs.confirm({
+            title: 'Run op mode now?',
+            text: 'Every server except the op server will be stopped immediately and players ' +
+                'will be disconnected. The op server will be restarted.',
+            confirmText: 'Yes, run it!',
+            danger: false
+        }, function () {
+            self.model.run(function (err) {
+                if (err) {
+                    dialogs.alert('error', 'Error', errorText(err));
+                }
             });
+        });
     },
 
     testDiscord: function (event) {
@@ -196,18 +181,10 @@ module.exports = Marionette.ItemView.extend({
                 });
             },
             onSuccess: function () {
-                sweetAlert({
-                    title: 'Sent',
-                    text: 'A test message was posted to Discord.',
-                    type: 'success'
-                });
+                dialogs.alert('success', 'Sent', 'A test message was posted to Discord.');
             },
             onError: function (err) {
-                sweetAlert({
-                    title: 'Error',
-                    text: errorText(err),
-                    type: 'error'
-                });
+                dialogs.alert('error', 'Error', errorText(err));
             }
         });
     }

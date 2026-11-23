@@ -1,6 +1,6 @@
 var _ = require('underscore');
 var Marionette = require('marionette');
-var sweetAlert = require('sweet-alert');
+var dialogs = require('app/dialogs');
 
 var tpl = require('tpl/logs/list_item.html');
 
@@ -36,16 +36,13 @@ module.exports = Marionette.ItemView.extend({
 
     deleteLog: function (event) {
         var self = this;
-        sweetAlert({
-                title: 'Are you sure?',
-                text: 'The log will be deleted from the server!',
-                type: 'warning',
-                showCancelButton: true,
-                confirmButtonClass: 'btn-danger',
-                confirmButtonText: 'Yes, delete it!'
-            },
-            function () {
-                self.model.destroy();
-            });
+        dialogs.confirm({
+            title: 'Are you sure?',
+            text: 'The log will be deleted from the server!',
+            confirmText: 'Yes, delete it!',
+            danger: true
+        }, function () {
+            self.model.destroy();
+        });
     }
 });
