@@ -119,4 +119,63 @@ describe('routes/servers (B4-B7)', function () {
                 done();
             });
     });
+
+    function expectNoLetters(req, done) {
+        req.end(function (err, res) {
+            if (err) {
+                return done(err);
+            }
+
+            res.status.should.eql(400);
+            res.body.should.eql({error: 'title must contain letters or digits'});
+            calls.addServer.should.eql([]);
+            calls.getServer.should.eql([]);
+            calls.update.should.eql([]);
+            calls.save.should.eql(0);
+            done();
+        });
+    }
+
+    ['   ', '???'].forEach(function (title) {
+        it('B2: POST / with title ' + JSON.stringify(title) + ' is 400 and adds nothing', function (done) {
+            expectNoLetters(request(app).post('/api/servers').send({title: title}), done);
+        });
+
+        it('B2: PUT /Keep-Me with title ' + JSON.stringify(title) + ' is 400 and touches nothing', function (done) {
+            expectNoLetters(request(app).put('/api/servers/Keep-Me').send({title: title}), done);
+        });
+    });
+
+    it('B2: POST / with an empty title still says "title is required"', function (done) {
+        expectRefused(request(app).post('/api/servers').send({title: ''}), done);
+    });
+
+    it('B2: PUT /Keep-Me with an empty title still says "title is required"', function (done) {
+        expectRefused(request(app).put('/api/servers/Keep-Me').send({title: ''}), done);
+    });
+
+    it('B2: POST / with title "Ops" still succeeds', function (done) {
+        request(app).post('/api/servers').send({title: 'Ops'}).end(function (err, res) {
+            if (err) {
+                return done(err);
+            }
+
+            res.status.should.eql(200);
+            calls.addServer.should.eql([{title: 'Ops'}]);
+            done();
+        });
+    });
+
+    it('B2: PUT /Keep-Me with title "Ops" still succeeds', function (done) {
+        request(app).put('/api/servers/Keep-Me').send({title: 'Ops'}).end(function (err, res) {
+            if (err) {
+                return done(err);
+            }
+
+            res.status.should.eql(200);
+            calls.update.should.eql([{title: 'Ops'}]);
+            calls.save.should.eql(1);
+            done();
+        });
+    });
 });

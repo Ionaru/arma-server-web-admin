@@ -36,7 +36,9 @@ module.exports = Marionette.ItemView.extend({
             dataType: 'json',
             success: function (data) {
                 laddaBtn.stop();
-                self.render();
+                if (!self.isDestroyed) {
+                    self.render();
+                }
             },
             error: function () {
                 laddaBtn.stop();

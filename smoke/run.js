@@ -17,7 +17,7 @@ var playwright = require('@playwright/test');
 
 var repoRoot = path.resolve(__dirname, '..');
 
-var CHECK_COUNT = 9;
+var CHECK_COUNT = 10;
 var WAIT_TIMEOUT = 15 * 1000;
 var FIRST_LOAD_TIMEOUT = 60 * 1000;
 var HOME_READY_DEADLINE = 60 * 1000;
@@ -510,6 +510,47 @@ checks.push({name: 'mission upload', run: async function (page) {
 
     if (state.marker !== 'still-here' || state.hash !== '#missions') {
         throw new Error('the page navigated or reloaded when Upload was clicked with no file selected');
+    }
+}});
+
+// B3: leaving the Missions page while an upload runs must not make the success callback render a
+// destroyed view (ViewDestroyedError). The page-error listener fails this check if it does.
+checks.push({name: 'mission upload then navigate away', run: async function (page) {
+    await clickNav(page, 'a#missions', '#missions');
+
+    var uploadDir = fs.mkdtempSync(path.join(root, 'upload-'));
+    var file = path.join(uploadDir, 'Upload_Nav.Altis.pbo');
+
+    fs.writeFileSync(file, 'SMOKE-UPLOAD');
+
+    var input = page.locator('#upload input[type=file]');
+
+    await input.waitFor({state: 'attached', timeout: WAIT_TIMEOUT});
+    await input.setInputFiles([file]);
+
+    var delayRoute = async function (route) {
+        if (route.request().method() === 'POST') {
+            await new Promise(function (resolve) { setTimeout(resolve, 1500); });
+        }
+
+        await route.continue();
+    };
+
+    await page.route('**/api/missions', delayRoute);
+
+    try {
+        var answered = page.waitForResponse(function (response) {
+            return response.request().method() === 'POST' && response.url().indexOf('/api/missions') !== -1;
+        }, {timeout: WAIT_TIMEOUT});
+
+        await page.locator('#upload button[type=submit]').click({timeout: WAIT_TIMEOUT});
+        await clickNav(page, 'a#mods', '#mods');
+        await answered;
+
+        // Give the success callback time to run (and to throw, if it renders the destroyed view).
+        await page.waitForTimeout(1000);
+    } finally {
+        await page.unroute('**/api/missions', delayRoute);
     }
 }});
 
