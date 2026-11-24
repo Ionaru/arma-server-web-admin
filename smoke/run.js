@@ -1968,6 +1968,233 @@ checks.push({name: 'save error alert over the modal', run: withModalCleanup(asyn
     }
 })});
 
+// A status-only socket push (ping, players, pid) must not wipe unsaved edits on the server page:
+// the backend pushes the whole server list every few seconds while a server runs, and each push
+// used to re-render the Settings, Mods, Parameters and Missions tabs. The pushes are injected into
+// the browser's own socket, so the app and servers.json never see them and nothing is saved. A
+// second page keeps the shared page untouched for the checks that follow.
+checks.push({name: 'status push keeps unsaved edits', run: async function (page, state) {
+    var smokeStatePlayers = function (names) {
+        return names.map(function (name, index) {
+            return {name: name, raw: {score: index + 1}};
+        });
+    };
+
+    var page2 = await page.context().newPage();
+
+    try {
+        attachListeners(page2, state.origin);
+
+        // The page's websocket is relayed to the real server untouched; `socket.ws` is kept so a
+        // frame can be injected towards the page. `upgraded` turns true when the page has sent the
+        // engine.io upgrade packet '5' (after `2probe` / `3probe`), i.e. once the client has
+        // switched to the websocket transport and treats frames on it as socket.io packets.
+        var socket = {ws: null, upgraded: false};
+
+        await page2.routeWebSocket(/\/socket\.io\//, function (ws) {
+            var server = ws.connectToServer();
+
+            socket.ws = ws;
+            socket.upgraded = false;
+
+            // A message handler turns off the automatic forwarding, so both directions are relayed here.
+            ws.onMessage(function (message) {
+                if (message === '5') {
+                    socket.upgraded = true;
+                }
+
+                server.send(message);
+            });
+            server.onMessage(function (message) {
+                ws.send(message);
+            });
+            ws.onClose(function (code, reason) {
+                server.close({code: code, reason: reason});
+            });
+            server.onClose(function (code, reason) {
+                ws.close({code: code, reason: reason});
+            });
+        });
+
+        await page2.goto(state.origin + '/' + state.serverHref, {timeout: WAIT_TIMEOUT});
+        await page2.locator('#content h2').filter({hasText: 'Smoke Server'}).waitFor({state: 'visible', timeout: WAIT_TIMEOUT});
+
+        var end = Date.now() + WAIT_TIMEOUT;
+
+        while (!socket.upgraded) {
+            if (Date.now() > end) {
+                throw new Error('the page did not send the engine.io upgrade packet "5" within ' + WAIT_TIMEOUT + ' ms, so no push can be injected');
+            }
+
+            await sleep(100);
+        }
+
+        var list = await page2.evaluate(async function () {
+            return (await fetch('/api/servers')).json();
+        });
+
+        if (!list.some(function (server) { return server.title === 'Smoke Server'; })) {
+            throw new Error('GET /api/servers has no server titled "Smoke Server"');
+        }
+
+        // Pushes the full list with only the Smoke Server entry changed, as the backend does.
+        var push = function (changes) {
+            var pushed = list.map(function (server) {
+                if (server.title !== 'Smoke Server') {
+                    return server;
+                }
+
+                var copy = JSON.parse(JSON.stringify(server));
+
+                Object.keys(changes).forEach(function (key) {
+                    copy[key] = changes[key];
+                });
+
+                return copy;
+            });
+
+            socket.ws.send('42' + JSON.stringify(['servers', pushed]));
+        };
+
+        var online = function (players, ping) {
+            return {
+                name: 'Smoke Server',
+                map: 'Altis',
+                raw: {game: 'Smoke Mission'},
+                players: smokeStatePlayers(players),
+                maxplayers: 32,
+                ping: ping
+            };
+        };
+
+        // Unsaved edits on every editable tab.
+        await openTab(page2, 'settings');
+        await page2.locator('#tab-settings #settings input.max-players').fill('48', {timeout: WAIT_TIMEOUT});
+        await page2.locator('#tab-settings #settings input.persistent').check({timeout: WAIT_TIMEOUT});
+
+        await openTab(page2, 'mods');
+
+        var modRow = page2.locator('#tab-mods tbody tr').filter({hasText: '@smoke_mod'}).first();
+        await modRow.waitFor({state: 'visible', timeout: WAIT_TIMEOUT});
+        await modRow.locator('input[type=checkbox]').check({timeout: WAIT_TIMEOUT});
+
+        await openTab(page2, 'settings');
+        await page2.locator('#tab-settings #parameters .add-parameter').click({timeout: WAIT_TIMEOUT});
+
+        var parameterInput = page2.locator('#tab-settings #parameters tbody tr input#parameter').first();
+        await parameterInput.fill('-smoke', {timeout: WAIT_TIMEOUT});
+        // Tab blurs the input, which fires the change event that stores the value in the row's model.
+        await parameterInput.press('Tab', {timeout: WAIT_TIMEOUT});
+
+        await openTab(page2, 'missions');
+
+        var available = page2.locator('#tab-missions #available tbody tr').filter({hasText: 'smoke'}).first();
+        await available.waitFor({state: 'visible', timeout: WAIT_TIMEOUT});
+        await available.locator('a.add').click({timeout: WAIT_TIMEOUT});
+
+        var rotation = page2.locator('#tab-missions #rotation tbody tr');
+        await waitForCount(rotation, function (count) { return count === 1; }, 'the rotation did not get 1 row after Add');
+        await rotation.first().locator('select#difficulty').selectOption('veteran', {timeout: WAIT_TIMEOUT});
+
+        // Inactive tab panes are display: none, so everything below reads values and counts, never visibility.
+        var assertEdits = async function (label) {
+            var problems = [];
+            var expect = function (field, expected, actual) {
+                if (actual !== expected) {
+                    problems.push(field + ' is ' + JSON.stringify(actual) + ', expected ' + JSON.stringify(expected));
+                }
+            };
+
+            var maxPlayers = page2.locator('#tab-settings #settings input.max-players');
+
+            if (await maxPlayers.count() === 1) {
+                expect('max players', '48', await maxPlayers.inputValue({timeout: WAIT_TIMEOUT}));
+            } else {
+                problems.push('max players input count is ' + await maxPlayers.count() + ', expected 1');
+            }
+
+            var persistent = page2.locator('#tab-settings #settings input.persistent');
+
+            if (await persistent.count() === 1) {
+                expect('persistent checked', true, await persistent.isChecked({timeout: WAIT_TIMEOUT}));
+            } else {
+                problems.push('persistent checkbox count is ' + await persistent.count() + ', expected 1');
+            }
+
+            var modBox = page2.locator('#tab-mods tbody tr').filter({hasText: '@smoke_mod'}).locator('input[type=checkbox]');
+
+            if (await modBox.count() === 1) {
+                expect('@smoke_mod checked', true, await modBox.isChecked({timeout: WAIT_TIMEOUT}));
+            } else {
+                problems.push('@smoke_mod checkbox count is ' + await modBox.count() + ', expected 1');
+            }
+
+            var parameterRows = page2.locator('#tab-settings #parameters tbody tr');
+            var parameterCount = await parameterRows.count();
+
+            expect('parameter row count', 1, parameterCount);
+
+            if (parameterCount === 1) {
+                expect('parameter value', '-smoke', await parameterRows.first().locator('input#parameter').inputValue({timeout: WAIT_TIMEOUT}));
+            }
+
+            var rotationCount = await rotation.count();
+
+            expect('rotation row count', 1, rotationCount);
+
+            if (rotationCount === 1) {
+                expect('rotation mission name', 'smoke.Altis', await rotation.first().locator('input#name').inputValue({timeout: WAIT_TIMEOUT}));
+                expect('rotation difficulty', 'veteran', await rotation.first().locator('select#difficulty').inputValue({timeout: WAIT_TIMEOUT}));
+            }
+
+            if (problems.length > 0) {
+                throw new Error('unsaved edits were lost after push ' + label + ': ' + problems.join('; '));
+            }
+        };
+
+        var waitForMarker = async function (label, description, fn, arg) {
+            try {
+                await page2.waitForFunction(fn, arg, {timeout: WAIT_TIMEOUT});
+            } catch (err) {
+                throw new Error('push ' + label + ' did not show ' + description, {cause: err});
+            }
+        };
+
+        // (a) the server goes online: pid and state arrive.
+        push({pid: 4242, state: online(['Alpha'], 10)});
+        await page2.locator('#tab-info :is(.label-success, .badge.text-bg-success)').waitFor({state: 'attached', timeout: WAIT_TIMEOUT})
+            .catch(function (err) { throw new Error('push (a) did not show the Online label in the Info tab', {cause: err}); });
+        await assertEdits('(a) pid and state');
+
+        // (b) a player joins: only the state changes.
+        push({pid: 4242, state: online(['Alpha', 'Bravo'], 12)});
+        await waitForMarker('(b)', 'Bravo in the Players tab', function () {
+            var pane = document.querySelector('#tab-players');
+
+            return !!pane && pane.textContent.indexOf('Bravo') !== -1;
+        });
+        await assertEdits('(b) state only');
+
+        // (c) the server stops.
+        push({pid: null, state: null});
+        await page2.locator('#tab-info :is(.label-default, .badge.text-bg-secondary)').waitFor({state: 'attached', timeout: WAIT_TIMEOUT})
+            .catch(function (err) { throw new Error('push (c) did not show the Offline label in the Info tab', {cause: err}); });
+        await assertEdits('(c) pid and state cleared');
+
+        // A push that changes configuration still refreshes the page. It re-renders the editable
+        // tabs and so drops the edits above, which is intended; nothing is asserted about them.
+        push({pid: null, state: null, port: 2310});
+        await waitForMarker('with a new port', 'port 2310 in the Settings form and the Info tab', function () {
+            var input = document.querySelector('#tab-settings #settings input.port');
+            var info = document.querySelector('#tab-info');
+
+            return !!input && input.value === '2310' && !!info && info.textContent.indexOf('2310') !== -1;
+        });
+    } finally {
+        await page2.close();
+    }
+}});
+
 // The checks below change server state; keep them last and in this order. B10 deletes every server.
 
 // B6: Add on an available mission puts it in the rotation.

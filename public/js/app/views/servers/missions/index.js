@@ -24,7 +24,7 @@ module.exports = Marionette.View.extend({
     },
 
     modelEvents: {
-        change: 'serverUpdated'
+        change: 'serverChanged'
     },
 
     initialize: function (options) {
@@ -53,6 +53,12 @@ module.exports = Marionette.View.extend({
         this.filterValue = event.target.value;
         this.availableListView.filterValue = this.filterValue;
         this.availableListView.filter();
+    },
+
+    serverChanged: function () {
+        if (this.model.hasConfigChange()) {
+            this.serverUpdated();
+        }
     },
 
     serverUpdated: function () {

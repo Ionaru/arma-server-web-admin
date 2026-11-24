@@ -191,6 +191,15 @@ Templates print data with `<%- %>` (escaped): player, server and mission names c
 query and can hold markup. `<%= %>` is only for markup the code builds itself (the remaining
 `navigation.html` and `servers/form.html` sites).
 
+**Trap: the server page and status pushes.** While a server runs, its `state` changes on every 5 s
+gamedig poll (and `pid` on start and stop), and each change reaches the open server page as a model
+`change`. Only the Info and Players views follow a status-only change; the editable tabs (Settings,
+Mods, Parameters, mission rotation) re-render, and so drop unsaved edits, only when
+`model.hasConfigChange()` is true (`public/js/app/models/server.js`). It treats every attribute
+not in `statusAttributes` (`pid`, `state`) as configuration, so a new configuration field needs
+nothing, but a new runtime field in `Server.prototype.toJSON` must be added to `statusAttributes`.
+A configuration push (another admin saving the same server) still re-renders those tabs.
+
 Marionette 4 traps when porting upstream (Marionette 2) code: `filter` is a method, so a `filter:`
 key on a collection view makes `render()` throw (use `viewFilter(view)`, which gets the child view);
 `isDestroyed()` and `isRendered()` are methods (the bare property is always truthy); `render` is not
@@ -429,7 +438,12 @@ pnpm run smoke         # starts the real app and clicks through every page in he
 - It also pins the Marionette 4 behaviours that break silently: the nav's active tab and the server
   dropdown following the route, both missions filters, all six regions of the server page
   rendering, a socket push re-rendering the lists, and a push that changes one server leaving the
-  other rows and the keyboard focus alone. The state-changing checks (add a rotation mission, save a
+  other rows and the keyboard focus alone.
+- It also checks that status pushes keep unsaved edits on the server page (`status push keeps
+  unsaved edits`). The app cannot produce a status push without a running game server, so the check
+  opens a second page whose socket it relays with `page.routeWebSocket` and injects `servers`
+  frames into it (`42["servers",[...]]`, after the client's engine.io upgrade packet `5`). Nothing
+  reaches the app or `servers.json`. The state-changing checks (add a rotation mission, save a
   server, add a server through the modal, a pushed server, that push check, the empty server list)
   run last.
 - The config cannot be swapped by changing the working directory: `app.js` and `lib/server.js`
