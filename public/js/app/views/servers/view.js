@@ -30,7 +30,7 @@ module.exports = Marionette.View.extend({
     },
 
     modelEvents: {
-        change: 'serverUpdated'
+        change: 'serverChanged'
     },
 
     initialize: function (options) {
@@ -45,6 +45,21 @@ module.exports = Marionette.View.extend({
         this.showChildView('parametersView', new ParametersListView({model: this.model}));
         this.showChildView('playersView', new PlayersView({model: this.model}));
         this.showChildView('settingsView', new FormView({model: this.model}));
+    },
+
+    serverChanged: function () {
+        // A running server's state is pushed every 5 s and its pid on start and stop; re-rendering
+        // the editable tabs on those would wipe unsaved edits, so only the status views follow them.
+        if (this.model.hasConfigChange()) {
+            this.serverUpdated();
+        } else {
+            this.statusUpdated();
+        }
+    },
+
+    statusUpdated: function () {
+        this.getChildView('infoView').render();
+        this.getChildView('playersView').render();
     },
 
     serverUpdated: function () {

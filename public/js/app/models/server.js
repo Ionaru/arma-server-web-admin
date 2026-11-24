@@ -24,6 +24,22 @@ module.exports = Backbone.Model.extend({
         verify_signatures: false
     },
     urlRoot: '/api/servers/',
+    // The runtime fields of lib/server.js toJSON; every other attribute is configuration. The server
+    // page re-renders its editable tabs only for a configuration change (hasConfigChange), so a new
+    // runtime field must be listed here or every status push wipes unsaved edits again.
+    statusAttributes: ['pid', 'state'],
+
+    // Call from a 'change' listener: outside one, changedAttributes() still holds the last change set.
+    hasConfigChange: function () {
+        var changed = this.changedAttributes();
+        if (!changed) {
+            return false;
+        }
+        var statusAttributes = this.statusAttributes;
+        return Object.keys(changed).some(function (key) {
+            return statusAttributes.indexOf(key) === -1;
+        });
+    },
     start: function (cb) {
         var self = this;
         $.ajax({
