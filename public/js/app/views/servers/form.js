@@ -51,15 +51,7 @@ module.exports = Marionette.View.extend({
                 });
             },
             error: function (model, response) {
-                // Bootstrap 3 pulls focus back into the modal, which would keep the alert
-                // from receiving Enter or Esc; release the trap while the alert is open.
-                $(document).off('focusin.bs.modal');
-                dialogs.alert('error', 'Error', 'An error occurred, please consult the logs').then(function () {
-                    var bs = modal.$el.data('bs.modal');
-                    if (bs && bs.isShown) {
-                        bs.enforceFocus();
-                    }
-                });
+                dialogs.alert('error', 'Error', 'An error occurred, please consult the logs');
             }
         });
     }

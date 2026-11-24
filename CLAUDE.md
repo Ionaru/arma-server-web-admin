@@ -17,7 +17,7 @@ The project is old and deliberately not modernised. Expect ES5-style `var` and p
 | Runtime | Node. Production runs Node 26. `engines` in `package.json` is `^20.19.0 || ^22.13.0 || >=24` (the eslint 10 and mocha 12 floor). CI runs Node 26 on GitHub Actions (`.github/workflows/ci.yml`). |
 | Package manager | pnpm 12 (needs Node >= 18), pinned by `packageManager` in `package.json`; see *Dependencies: pnpm* |
 | Server | Express 5, socket.io 4 |
-| Frontend | Backbone 1.6.1 + Marionette 4.1.3, Bootstrap 3, jQuery 3, sweetalert2 11, Ladda 2 |
+| Frontend | Backbone 1.6.1 + Marionette 4.1.3, Bootstrap 5.3.9 (JS from `bootstrap/dist/js/bootstrap.bundle.js`, Popper inlined), bootstrap-icons 1.13.2 webfont, jQuery 3, sweetalert2 11, Ladda 2 |
 | Bundling | webpack 5 (development mode), compiled **in memory** by `webpack-dev-middleware` (`app.js`) |
 | Process launcher | the `arma-server` package (0.0.10) actually spawns the game |
 | Status polling | `gamedig` 5, every 5s per running server; a poll is skipped while the previous query for the same process is still in flight (a failing gamedig 5 query takes about 4 to 6 s for Arma 2/3, read from the gamedig source) |
@@ -59,15 +59,10 @@ lock, resolve afresh and write one, so don't use npm for installs.
   `package.json`; keep it that way.
 - **webpack follows pnpm's symlinks** to their real paths under `node_modules/.pnpm`, so the
   bundle holds one copy each of jQuery and Backbone, and one underscore version (1.13.8).
-- **Two underscore instances in the bundle.** Under webpack 5, `require('underscore')` resolves
-  through the package's `module` export condition to the ES module build (`modules/index-all.js`),
-  which webpack exposes as a namespace object with getter-only properties. The ProvidePlugin global
-  `_` is therefore pinned to `underscore/underscore-umd.js`: backbone.bootstrap-modal assigns
-  `_.templateSettings` on the global `_`, and with the plain `underscore` entry the modal footers
-  render `{{cancelText}} {{okText}}` (the smoke run catches this). The consequence is two underscore
-  1.13 instances, the required ESM namespace and the global UMD `_`. Global configuration such as
-  `_.templateSettings` or `_.mixin` does not carry over between them, and cannot be set through the
-  required namespace.
+- **No ProvidePlugin.** Every bundled module requires what it uses, and `eslint.config.js` declares no
+  `_`, `$`, `Backbone` or `jQuery` globals, so a stray free one fails the lint (`no-undef`).
+  `require('underscore')` is the ES module build (a getter-only namespace), so nothing may assign
+  `_.templateSettings` or `_.mixin`.
 - **Fresh releases wait a day.** pnpm 12's `minimumReleaseAge` defaults to 1440 minutes, so a
   version published in the last 24 hours may not be picked.
 - **Switching an existing npm install** (the production box): stop the service and delete
@@ -166,9 +161,31 @@ have made both jobs worse. It has its own module and its own file instead.
 
 `public/js/app/dialogs.js` is the only place dialogs are created: views call `dialogs.alert` and
 `dialogs.confirm` (a confirm's callback runs only on Confirm), never sweetalert2 directly.
-`public/css/styles.css` sets `.swal2-popup { font-size: 1.6rem; }` because Bootstrap 3 sets `html`
-to 10px while sweetalert2 sizes from `1rem`; recheck or drop it whenever the root font size changes
-(the Bootstrap upgrade).
+An alert or confirm opened while a `.modal.show` exists is rendered inside it (sweetalert2 `target`,
+added only then): the Bootstrap 5 focus trap would otherwise take the keyboard back from the dialog,
+so Enter would fire the modal's OK again and Esc would close the modal under the alert. The target is
+the `.modal` root, never `.modal-dialog` (its `transform` would break `position: fixed`).
+
+`public/js/app/views/modal.js` is the only modal: `new ModalView({content: view, okText,
+cancelText, animate}).open()` wraps a Marionette view in a Bootstrap 5 modal (a falsy `cancelText`
+drops the Cancel button). The content view gets `ok`, `cancel`, `shown` and `hidden` events with the
+modal as the first argument; `preventClose()` makes the next `close()` a no-op, and after `hidden`
+the modal destroys itself and its content. Only one modal is open at a time: `open()` while another
+is open destroys the new modal and its content and shows nothing (a second modal would stack, and
+closing the top one would drop `modal-open` and every focus trap while the other stays open).
+
+Bootstrap JS is only ever required as `bootstrap/dist/js/bootstrap.bundle`: a second request string
+(the `bootstrap` ES build) registers the document-level data API twice, and every dropdown, collapse
+and tab click would be handled twice. jQuery 3.8 never sets `window.jQuery` under CommonJS, so there
+are no jQuery plugins (`$.fn.modal`, `.tab()`) and Bootstrap's events are native DOM events
+(`el.addEventListener('hidden.bs.modal', ...)`). Use `data-bs-*` attributes in templates; `.active`
+goes on `a.nav-link` and `a.dropdown-item`, never on the `li`.
+
+The navbar re-renders on every route, so `navigation.js` disposes its Dropdown and Collapse instances
+first, but not a Collapse that is mid-transition (`collapsing`): Bootstrap's completion timer would
+then read the nulled element and throw. The nav list has `navbar-nav-scroll`: Bootstrap 5 does not
+cap the open fixed-top menu, so without it a menu taller than the viewport (phone landscape) cannot
+be scrolled.
 
 Templates print data with `<%- %>` (escaped): player, server and mission names come from the game
 query and can hold markup. `<%= %>` is only for markup the code builds itself (the remaining
@@ -195,6 +212,9 @@ add, remove and reorder nothing.
 `test/public/marionette-4-api.js` scans for the three Marionette 2 base classes, `templateHelpers`,
 a `filter:` key, uncalled `isDestroyed`/`isRendered`/`isAttached`, and list views not extending
 `app/views/collection-view.js`.
+`test/public/bootstrap-5-markup.js` rejects Bootstrap 3 classes and `data-toggle`-style attributes
+in the templates and scripts, jQuery plugin calls (`.modal(`, `.tab(` and the like), any Bootstrap JS
+request other than `bootstrap/dist/js/bootstrap.bundle`, and Glyphicons; it also checks the packages.
 
 ## EventEmitter: use util.inherits
 
@@ -391,10 +411,30 @@ pnpm run smoke         # starts the real app and clicks through every page in he
   uploads land in the temp mpmissions folder, so a check that runs after it sees more than the one
   seeded mission.
 - It fails on any console error, page error, app response >= 400 or failed script, stylesheet or
-  font load, and on a missing DOM marker, including the Glyphicons font actually loading. There is
-  no allowlist on purpose: fix the cause instead of filtering the message.
-- It also fails when the Add server or Settings modal shows literal `{{` or `}}` text, which means
-  an unrendered backbone.bootstrap-modal template (`assertNoTemplateMarkers` in `smoke/run.js`).
+  font load, and on a missing DOM marker, including the bootstrap-icons font actually loading (on
+  the dashboard every `#content .bi` renders a glyph, and no request goes to a Glyphicons file).
+  There is no allowlist on purpose: fix the cause instead of filtering the message.
+- It also fails when the Add server or Settings modal shows literal template text (`{{`, `}}`, `<%`,
+  `%>`), which means an unrendered template (`assertNoTemplateMarkers` in `smoke/run.js`).
+- It pins the Bootstrap 5 behaviour that is easy to break silently. The Add server modal opens once
+  with one backdrop and focus inside, Enter in a field does not post, and Cancel, Esc and a backdrop
+  click each leave no `.modal`, `.modal-backdrop`, `modal-open` or body style residue, also after
+  three opens in a row. The Settings modal has a single OK button and closes on OK even when it is
+  clicked during the fade. A save error (a 200 response with a body that is not JSON) shows the
+  alert inside the modal with focus in it, Esc closes only the alert and Enter does not post again.
+  The navbar collapses at 375 px and not at 768 px, and content is never under it. The Servers
+  dropdown stays open after opening and its active item follows the route. Each server tab shows
+  one pane and one active link. No class matching a Bootstrap name prefix is missing from the loaded
+  stylesheets. sweetalert2 popups have a 16px font and spaced buttons. The missions upload card and
+  the rotation list sit right of their lists on desktop, and the six narrow pages do not scroll
+  sideways.
+- At 667 x 375 the last entry of the Servers dropdown can be reached and clicked (the open menu
+  scrolls). At 375 px, clicking `a#logs` right after the toggler, while the collapse animates,
+  reaches `#logs` and raises no page error. Two `click()` calls on `#settings` (and on
+  `#add-server`) in one tick leave one `.modal` and one backdrop, and closing it leaves none of
+  either.
+- The context uses `reducedMotion: 'reduce'` so modals open and close without a fade; the check that
+  clicks OK during the fade opens its own page without it.
 - It also pins the Marionette 4 behaviours that break silently: the nav's active tab and the server
   dropdown following the route, both missions filters, all six regions of the server page
   rendering, a socket push re-rendering the lists, and a push that changes one server leaving the
@@ -411,8 +451,9 @@ pnpm run smoke         # starts the real app and clicks through every page in he
   redirects both requires to the temp config, so a developer's real `config.js` is never read or
   touched.
 - `SMOKE_SCREENSHOTS=<dir>` saves a PNG per page, tab and dialog at desktop width and per page at
-  375 px, for before/after comparison. `SMOKE_KEEP=1` keeps the temp folder; it is always kept, and
-  its path printed, when the run fails.
+  375 px, for before/after comparison, plus `navbar-open-narrow`, `dropdown-open-desktop`,
+  `logs-delete-confirm` and `add-server-error-alert`. `SMOKE_KEEP=1` keeps the temp folder; it is
+  always kept, and its path printed, when the run fails.
 - `smoke/` is outside `test/` so mocha does not pick it up.
 
 Time-dependent tests use `timekeeper` (`tk.freeze` / `tk.reset`); see `test/lib/logs.js`. The op
@@ -423,8 +464,8 @@ developer's machine.
 `@eslint/js` recommended plus `no-unused-vars: off` and `semi: always`). Three blocks: Node files
 (`lib`, `routes`, `scripts`, `smoke`, the root scripts and `config.js.example`, which has no `.js`
 extension and is matched by name), `test/` (adds the mocha globals), and `public/js` (`ecmaVersion`
-2015 (the bundled code is ES5-style), browser globals plus the `ProvidePlugin` globals `_`, `$`,
-`Backbone` and `jQuery`). `no-undef` is on everywhere, so a stray global fails the lint.
+2015 (the bundled code is ES5-style), browser globals). `no-undef` is on everywhere, so a stray
+global fails the lint.
 
 ### CI
 

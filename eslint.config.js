@@ -40,19 +40,14 @@ module.exports = [
         rules
     },
     {
-        // Bundled by webpack, kept to ES5/ES2015. The four globals below are the
-        // ProvidePlugin keys in webpack.config.js.
+        // Bundled by webpack, kept to ES5/ES2015. There is no ProvidePlugin: every module requires what it uses.
         files: ['public/js/**/*.js'],
         languageOptions: {
             ecmaVersion: 2015,
             sourceType: 'commonjs',
             globals: {
                 ...globals.browser,
-                ...globals.commonjs,
-                _: 'readonly',
-                $: 'readonly',
-                Backbone: 'readonly',
-                jQuery: 'readonly'
+                ...globals.commonjs
             }
         },
         rules

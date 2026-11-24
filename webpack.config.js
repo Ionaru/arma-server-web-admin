@@ -1,5 +1,4 @@
 var path = require('path');
-var webpack = require('webpack');
 
 module.exports = {
     mode: 'development',
@@ -30,24 +29,12 @@ module.exports = {
         }
     },
 
-    plugins: [
-        new webpack.ProvidePlugin({
-            // The CommonJS/UMD build on purpose: require('underscore') resolves to the ES module build in
-            // webpack 5, whose namespace object cannot be assigned to, and backbone.bootstrap-modal
-            // assigns _.templateSettings on the global _ while it builds its template.
-            _: 'underscore/underscore-umd.js',
-            $: 'jquery',
-            Backbone: 'backbone',
-            jQuery: 'jquery'
-        })
-    ],
-
     module: {
         rules: [
             {test: /\.css$/, use: ['style-loader', 'css-loader']},
             // The templates are required as plain text for _.template
             {test: /\.html$/, type: 'asset/source'},
-            // Glyphicons fonts, emitted as files next to the bundle
+            // Icon font (bootstrap-icons), emitted next to the bundle; the ?hash in its CSS is matched on the path alone
             {test: /\.(woff2?|ttf|eot|svg)$/, type: 'asset/resource'}
         ]
     },

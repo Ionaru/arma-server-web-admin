@@ -1,6 +1,6 @@
 <h1>Op Mode</h1>
 
-<p class="text-muted">
+<p class="text-body-secondary">
     At the scheduled time every server except the op server is stopped, and the op server is
     restarted so it begins the operation with clean memory. Nothing is started again afterwards:
     the other servers come back with the nightly restart.
@@ -39,46 +39,48 @@
 </div>
 <% } %>
 
-<form class="form-horizontal">
-    <div class="form-group">
-        <label class="col-sm-2 control-label">Enabled</label>
+<form>
+    <div class="row mb-3">
+        <label class="col-sm-2 col-form-label pt-0">Enabled</label>
         <div class="col-sm-10">
-            <div class="checkbox">
-                <label>
-                    <input type="checkbox" class="enabled" <%- enabled ? 'checked' : '' %>>
+            <div class="form-check">
+                <label class="form-check-label">
+                    <input type="checkbox" class="form-check-input enabled" <%- enabled ? 'checked' : '' %>>
                     Run automatically on the schedule below
                 </label>
             </div>
         </div>
     </div>
 
-    <div class="form-group">
-        <label class="col-sm-2 control-label">Days</label>
+    <div class="row mb-3">
+        <label class="col-sm-2 col-form-label pt-0">Days</label>
         <div class="col-sm-10">
             <% _.each(dayNames, function (dayName, dayNumber) { %>
-            <label class="checkbox-inline">
-                <input type="checkbox" class="day" value="<%- dayNumber %>" <%- isDaySelected(dayNumber) %>>
-                <%- dayName %>
-            </label>
+            <div class="form-check form-check-inline">
+                <label class="form-check-label">
+                    <input type="checkbox" class="form-check-input day" value="<%- dayNumber %>" <%- isDaySelected(dayNumber) %>>
+                    <%- dayName %>
+                </label>
+            </div>
             <% }); %>
         </div>
     </div>
 
-    <div class="form-group">
-        <label for="op-mode-time" class="col-sm-2 control-label">Time</label>
+    <div class="row mb-3">
+        <label for="op-mode-time" class="col-sm-2 col-form-label">Time</label>
         <div class="col-sm-10">
             <input type="time" id="op-mode-time" class="form-control time" value="<%- time %>">
-            <p class="help-block">
+            <div class="form-text">
                 The panel host's own clock<% if (timezone) { %> (<%- timezone %>)<% } %>, not your
                 browser's.
-            </p>
+            </div>
         </div>
     </div>
 
-    <div class="form-group">
-        <label for="op-mode-server" class="col-sm-2 control-label">Op server</label>
+    <div class="row mb-3">
+        <label for="op-mode-server" class="col-sm-2 col-form-label">Op server</label>
         <div class="col-sm-10">
-            <select id="op-mode-server" class="form-control op-server">
+            <select id="op-mode-server" class="form-select op-server">
                 <option value="">Select a server</option>
                 <% servers.each(function (server) { %>
                 <option value="<%- server.get('id') %>" <%- isOpServer(server.get('id')) %>>
@@ -93,58 +95,58 @@
                 </option>
                 <% } %>
             </select>
-            <p class="help-block">
+            <div class="form-text">
                 This server is restarted. Every other server is stopped.
-            </p>
+            </div>
         </div>
     </div>
 
-    <div class="form-group">
-        <label class="col-sm-2 control-label">Next run</label>
+    <div class="row mb-3">
+        <label class="col-sm-2 col-form-label">Next run</label>
         <div class="col-sm-10">
-            <p class="form-control-static">
+            <p class="form-control-plaintext">
                 <% if (nextRunFormatted) { %>
                 <strong><%- nextRunFormatted %></strong>
                 <% } else { %>
-                <span class="text-muted">Not scheduled</span>
+                <span class="text-body-secondary">Not scheduled</span>
                 <% } %>
             </p>
         </div>
     </div>
 
-    <div class="form-group">
-        <label class="col-sm-2 control-label">Discord</label>
+    <div class="row mb-3">
+        <label class="col-sm-2 col-form-label">Discord</label>
         <div class="col-sm-10">
             <% if (discordEnabled) { %>
-            <p class="form-control-static">
+            <p class="form-control-plaintext">
                 <span class="text-success">Restarts are announced in Discord.</span>
             </p>
-            <button type="button" class="btn btn-default btn-sm test-discord" <%- discordTesting ? 'disabled' : '' %>>
-                <span class="glyphicon glyphicon-envelope"></span> Send test message
+            <button type="button" class="btn btn-secondary btn-sm test-discord" <%- discordTesting ? 'disabled' : '' %>>
+                <i class="bi bi-envelope-fill" aria-hidden="true"></i> Send test message
             </button>
-            <p class="help-block">
+            <div class="form-text">
                 Configured in <code>config.js</code>. Restart the panel to change it.
-            </p>
+            </div>
             <% } else { %>
-            <p class="form-control-static">
-                <span class="text-muted">Not configured, no messages are sent.</span>
+            <p class="form-control-plaintext">
+                <span class="text-body-secondary">Not configured, no messages are sent.</span>
             </p>
-            <p class="help-block">
+            <div class="form-text">
                 Set <code>discord.token</code> and <code>discord.channelId</code> in
                 <code>config.js</code>, then restart the panel.
-            </p>
+            </div>
             <% } %>
         </div>
     </div>
 
-    <div class="form-group">
-        <div class="col-sm-offset-2 col-sm-10">
+    <div class="row mb-3">
+        <div class="offset-sm-2 col-sm-10">
             <button type="button" class="btn btn-primary save">
-                <span class="glyphicon glyphicon-floppy-disk"></span> Save
+                <i class="bi bi-floppy-fill" aria-hidden="true"></i> Save
             </button>
 
-            <button type="button" class="btn btn-warning run pull-right" <%- running ? 'disabled' : '' %>>
-                <span class="glyphicon glyphicon-flash"></span>
+            <button type="button" class="btn btn-warning run float-end" <%- running ? 'disabled' : '' %>>
+                <i class="bi bi-lightning-fill" aria-hidden="true"></i>
                 <%- running ? 'Running...' : 'Run now' %>
             </button>
         </div>

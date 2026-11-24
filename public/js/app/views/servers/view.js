@@ -1,4 +1,3 @@
-var $ = require('jquery');
 var _ = require('underscore');
 var Backbone = require('backbone');
 var Marionette = require('marionette');
@@ -25,7 +24,6 @@ module.exports = Marionette.View.extend({
     },
 
     events: {
-        'click .nav-tabs a': 'tabs',
         submit: 'save'
     },
 
@@ -91,10 +89,5 @@ module.exports = Marionette.View.extend({
                 dialogs.alert('error', 'Error', 'An error occurred, please consult the logs');
             }
         });
-    },
-
-    tabs: function (e) {
-        e.preventDefault();
-        $($(e.target).attr('href')).tab('show');
     }
 });

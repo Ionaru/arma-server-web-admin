@@ -17,11 +17,11 @@ module.exports = Marionette.View.extend({
     templateContext: function () {
         var role = this.model.get('role');
         var roleLabel = role;
-        var roleClass = 'label-info';
+        var roleClass = 'text-bg-info';
 
         if (role === 'server') {
             roleLabel = 'Server';
-            roleClass = 'label-primary';
+            roleClass = 'text-bg-primary';
         } else if (role === 'HC') {
             roleLabel = 'Headless client';
         }

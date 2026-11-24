@@ -7,9 +7,12 @@ var tpl = require('tpl/navigation/servers/list_item.html');
 var template = _.template(tpl);
 
 module.exports = Marionette.View.extend({
-    className: function () {
-        return Backbone.history.fragment === 'servers/' + this.model.get('id') ? 'active' : '';
-    },
     tagName: 'li',
-    template: template
+    template: template,
+
+    templateContext: function () {
+        return {
+            isActive: Backbone.history.fragment === 'servers/' + this.model.get('id')
+        };
+    }
 });
