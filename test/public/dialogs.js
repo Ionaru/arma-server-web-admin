@@ -33,7 +33,7 @@ var expectedConfirm = function (buttonClass) {
         confirmButtonText: 'Yes, delete it!',
         cancelButtonText: 'Cancel',
         buttonsStyling: false,
-        customClass: {confirmButton: buttonClass, cancelButton: 'btn btn-default'},
+        customClass: {confirmButton: buttonClass, cancelButton: 'btn btn-secondary'},
         reverseButtons: true
     };
 };
@@ -109,6 +109,126 @@ describe('dialogs', function () {
             await nextMacrotask();
 
             cbArgs.should.eql([[]]);
+        });
+    });
+
+    // B11: while a Bootstrap modal is open its focus trap takes the keyboard back from anything outside
+    // it, so a dialog opened then is rendered inside the modal (sweetalert2 `target`). The lookup runs
+    // when the dialog is opened, and the key is absent when there is no modal (and no document, as here).
+    describe('B11 target inside an open modal', function () {
+        var hadDocument;
+        var originalDocument;
+        var modal;
+        var selectors;
+
+        beforeEach(function () {
+            hadDocument = 'document' in global;
+            originalDocument = global.document;
+            modal = {className: 'modal show'};
+            selectors = [];
+            global.document = {
+                querySelector: function (selector) {
+                    selectors.push(selector);
+
+                    return selector === '.modal.show' ? modal : null;
+                }
+            };
+        });
+
+        afterEach(function () {
+            if (hadDocument) {
+                global.document = originalDocument;
+            } else {
+                delete global.document;
+            }
+        });
+
+        it('B11 alert adds the open modal as target', function () {
+            var fake = dialogs.swal = fakeSwal(Promise.resolve({isConfirmed: true}));
+
+            dialogs.alert('error', 'Error', 'boom');
+
+            fake.calls.length.should.eql(1);
+            (fake.calls[0].target === modal).should.be.true();
+            fake.calls[0].should.eql({
+                icon: 'error',
+                title: 'Error',
+                text: 'boom',
+                buttonsStyling: false,
+                customClass: {confirmButton: 'btn btn-primary'},
+                target: modal
+            });
+            selectors.should.containEql('.modal.show');
+        });
+
+        [true, false].forEach(function (danger) {
+            it('B11 confirm adds the open modal as target (danger ' + danger + ')', function () {
+                var fake = dialogs.swal = fakeSwal(Promise.resolve({isConfirmed: false, isDismissed: true}));
+                var expected = expectedConfirm(danger ? 'btn btn-danger' : 'btn btn-warning');
+
+                expected.target = modal;
+
+                dialogs.confirm(confirmOptions(danger), function () {});
+
+                fake.calls.length.should.eql(1);
+                (fake.calls[0].target === modal).should.be.true();
+                fake.calls[0].should.eql(expected);
+            });
+        });
+
+        it('B11 adds no target key when no modal is open', function () {
+            var fake = dialogs.swal = fakeSwal(Promise.resolve({isConfirmed: true}));
+
+            modal = null;
+
+            dialogs.alert('error', 'Error', 'boom');
+            dialogs.confirm(confirmOptions(true), function () {});
+
+            fake.calls.length.should.eql(2);
+            fake.calls[0].should.not.have.property('target');
+            fake.calls[1].should.not.have.property('target');
+            fake.calls[1].should.eql(expectedConfirm('btn btn-danger'));
+        });
+
+        it('B11 looks for the modal each time a dialog is opened, before it is fired', function () {
+            var first = modal;
+            var fake = dialogs.swal = fakeSwal(Promise.resolve({isConfirmed: true}));
+
+            dialogs.alert('error', 'Error', 'one');
+
+            modal = null;
+            dialogs.alert('error', 'Error', 'two');
+
+            modal = {className: 'modal show'};
+            dialogs.alert('error', 'Error', 'three');
+
+            fake.calls.length.should.eql(3);
+            (fake.calls[0].target === first).should.be.true();
+            fake.calls[1].should.not.have.property('target');
+            (fake.calls[2].target === modal).should.be.true();
+        });
+    });
+
+    describe('B11 no document', function () {
+        it('B11 adds no target key when document is undefined', function () {
+            var hadDocument = 'document' in global;
+            var originalDocument = global.document;
+            var fake = dialogs.swal = fakeSwal(Promise.resolve({isConfirmed: true}));
+
+            delete global.document;
+
+            try {
+                dialogs.alert('error', 'Error', 'boom');
+                dialogs.confirm(confirmOptions(false), function () {});
+            } finally {
+                if (hadDocument) {
+                    global.document = originalDocument;
+                }
+            }
+
+            fake.calls.length.should.eql(2);
+            fake.calls[0].should.not.have.property('target');
+            fake.calls[1].should.not.have.property('target');
         });
     });
 

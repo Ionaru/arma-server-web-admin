@@ -1,9 +1,9 @@
 var _ = require('underscore');
-var Backbone = require('backbone');
 var CollectionView = require('app/views/collection-view');
 
 var Server = require('app/models/server');
 var AddServerView = require('app/views/servers/form');
+var ModalView = require('app/views/modal');
 var EmptyView = require('app/views/servers/empty');
 var ListItemView = require('app/views/servers/list_item');
 var tpl = require('tpl/servers/list.html');
@@ -23,6 +23,6 @@ module.exports = CollectionView.extend({
 
     addServer: function () {
         var view = new AddServerView({model: new Server(), servers: this.collection});
-        new Backbone.BootstrapModal({content: view, servers: this.collection}).open();
+        new ModalView({content: view}).open();
     }
 });
